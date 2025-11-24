@@ -11,12 +11,52 @@ import remarkGfm from "remark-gfm";
 const Container = styled.div`
   width: 360px;
   min-height: 100vh;
-  padding: 16px;
+  padding: 12px;
   margin-top: 16px;
-  background: #f7f7f7;
+  background: #ffffff;
+  border-radius: 14px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #eef2f6;
+`;
+
+// 顶部标签栏（仿 Bing：Chat / Compose / Insights）
+const TopBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 4px 8px 10px;
+  border-bottom: 1px solid #eef2f6;
+  margin-bottom: 10px;
+`;
+
+const Tab = styled.button<{ $active?: boolean }>`
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  color: ${({ $active }) => ($active ? "#0b57d0" : "#5b6b7a")};
+  font-weight: ${({ $active }) => ($active ? 600 : 500)};
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+
+  &:hover {
+    background: #f4f7fb;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: 0;
+    height: 2px;
+    background: ${({ $active }) => ($active ? "#0b57d0" : "transparent")};
+    border-radius: 2px;
+  }
 `;
 
 const InputContainer = styled.div`
@@ -129,33 +169,109 @@ const AnswersContainer = styled.div`
 `;
 
 const AnswerItem = styled.div`
-  background: white;
+  background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
   padding: 14px 16px;
   margin-bottom: 12px;
-  border-radius: 8px;
-  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  border: 1px solid #e8eef7;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 10px rgba(11, 87, 208, 0.05);
+  border-left: 3px solid #0b57d0;
 
   &:hover {
-    border-color: #1890ff;
-    box-shadow: 0 4px 12px rgba(24, 144, 255, 0.1);
+    border-color: #cfe2ff;
+    box-shadow: 0 6px 16px rgba(11, 87, 208, 0.12);
     transform: translateY(-1px);
+    background: linear-gradient(180deg, #f7faff 0%, #ffffff 100%);
   }
 
   .answer-text {
-    color: #333;
+    color: #1f2937;
     font-size: 14px;
-    line-height: 1.6;
+    line-height: 1.7;
     flex: 1;
     margin-right: 16px;
     padding: 2px 0;
     word-break: break-word;
     white-space: normal;
+
+    h1, h2, h3 {
+      color: #0f172a;
+      font-weight: 600;
+      margin: 8px 0 6px;
+      line-height: 1.3;
+    }
+    h1 { font-size: 16px; }
+    h2 { font-size: 15px; }
+    h3 { font-size: 14px; }
+
+    p { margin: 6px 0; }
+
+    ul, ol { margin: 6px 0 6px 18px; }
+    li { margin: 4px 0; }
+
+    a {
+      color: #0b57d0;
+      text-decoration: none;
+    }
+    a:hover { text-decoration: underline; }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      background: #f3f5f7;
+      border: 1px solid #e6e8eb;
+      border-radius: 6px;
+      padding: 0 4px;
+      font-size: 13px;
+      color: #0f172a;
+    }
+    pre {
+      background: #0f172a;
+      color: #e6edf3;
+      border-radius: 10px;
+      padding: 10px 12px;
+      overflow: auto;
+      border: 1px solid #0b1b35;
+    }
+    pre code {
+      background: transparent;
+      border: none;
+      color: inherit;
+      padding: 0;
+      font-size: 13px;
+    }
+
+    blockquote {
+      background: #f8fafc;
+      border-left: 3px solid #e0e7ff;
+      color: #334155;
+      margin: 8px 0;
+      padding: 6px 10px;
+      border-radius: 6px;
+    }
+    hr {
+      border: none;
+      border-top: 1px dashed #e5e7eb;
+      margin: 10px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0;
+    }
+    th, td {
+      border: 1px solid #e5e7eb;
+      padding: 6px 8px;
+      text-align: left;
+    }
+    th {
+      background: #f3f6fb;
+      color: #0f172a;
+    }
 
     /* 使 Markdown 图片适应侧栏宽度 */
     img {
@@ -179,11 +295,11 @@ const AnswerItem = styled.div`
     cursor: pointer;
     background: #f5fbff;
     border: 1px solid #e6f4ff;
-    box-shadow: 0 1px 2px rgba(24, 144, 255, 0.06);
+    box-shadow: 0 1px 2px rgba(11, 87, 208, 0.06);
 
     &:hover {
       background: #e6f4ff;
-      box-shadow: 0 2px 6px rgba(24, 144, 255, 0.12);
+      box-shadow: 0 2px 6px rgba(11, 87, 208, 0.12);
       transform: translateY(-1px);
     }
   }
@@ -246,6 +362,57 @@ const SuggestionList = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+`;
+
+// 欢迎区与功能卡片（仿图示布局）
+const HeroSection = styled.div`
+  background: #ffffff;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  padding: 12px 14px;
+  margin: 10px 0 12px;
+`;
+
+const HeroTitle = styled.div`
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 8px;
+`;
+
+const HeroCards = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const HeroCard = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fafafa;
+  border: 1px solid #eeeeee;
+  border-radius: 10px;
+  padding: 10px 12px;
+`;
+
+const HeroCardText = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #334155;
+
+  a {
+    color: #0b57d0;
+    text-decoration: none;
+    font-weight: 600;
+  }
+`;
+
+const Emoji = styled.span`
+  font-size: 18px;
 `;
 
 const SuggestionChip = styled.button`
@@ -525,6 +692,12 @@ function App() {
 
   return (
     <Container>
+      <TopBar>
+        <Tab $active>Chat</Tab>
+        <Tab>Compose</Tab>
+        <Tab>Insights</Tab>
+      </TopBar>
+
       <InputContainer>
         <QuestionInput
           ref={textareaRef}
@@ -541,6 +714,34 @@ function App() {
           {isLoading ? "请稍等..." : "确认"}
         </ConfirmButton>
       </InputContainer>
+
+      {/* 欢迎区：模仿示例图片结构与文字风格 */}
+      <HeroSection>
+        <HeroTitle>Welcome to the new Bing</HeroTitle>
+        <HeroCards>
+          <HeroCard>
+            <HeroCardText>
+              <Emoji>🧠</Emoji>
+              <span>Ask complex questions</span>
+            </HeroCardText>
+            <a href="#" aria-label="sample-question">Learn more</a>
+          </HeroCard>
+          <HeroCard>
+            <HeroCardText>
+              <Emoji>🎨</Emoji>
+              <span>Get creative inspiration</span>
+            </HeroCardText>
+            <a href="#" aria-label="creative">Explore</a>
+          </HeroCard>
+          <HeroCard>
+            <HeroCardText>
+              <Emoji>✍️</Emoji>
+              <span>Rewrite text together</span>
+            </HeroCardText>
+            <a href="#" aria-label="rewrite">Try it</a>
+          </HeroCard>
+        </HeroCards>
+      </HeroSection>
 
       <AnswersContainer>
         {answers.map((answer, index) => (
