@@ -21,7 +21,7 @@ const Container = styled.div`
   border: 1px solid #eef2f6;
 `;
 
-// 顶部标签栏（仿 Bing：Chat / Compose / Insights）
+// 顶部标签栏（仿 Bing：Chat / Compose / History）
 const TopBar = styled.div`
   display: flex;
   align-items: center;
@@ -508,6 +508,50 @@ const SuggestionChip = styled.button`
   }
 `;
 
+// 历史记录样式
+const HistoryContainer = styled.div`
+  background: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+`;
+
+const HistoryTitle = styled.div`
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+`;
+
+const HistoryList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const HistoryItem = styled.div`
+  display: flex;
+  align-items: center;
+  background: #fafafa;
+  border: 1px solid #eeeeee;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: #1f2937;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #f5f8fc;
+    transform: translateY(-1px);
+  }
+`;
+
+const HistoryEmpty = styled.div`
+  font-size: 13px;
+  color: #8a9aa9;
+`;
+
 // 流式输出：使用 Coze API 的 stream 接口逐步渲染回答
 // 在 handleConfirm 中驱动状态更新以实现增量显示
 // 兼容不同事件结构并增强错误可观测性
@@ -581,7 +625,8 @@ const isRecommendedQuestion = (text: string): boolean => {
   return endsWithQuestion && paragraphs.length < 2;
 };
 
-// 清理知识回溯标记（^^[recall slice ...] / ^^(recall slice ...) / ^^（recall slice ...））
+// 清理知识回溯/来源标记
+// 覆盖：^^[recall slice ...]、^^(recall slice ...)、^^（recall slice ...）、以及“答案来自知识库 ^^”变体
 const cleanRecallSuffix = (text: string): string => {
   if (!text || typeof text !== "string") return text || "";
   let t = text;
@@ -589,6 +634,12 @@ const cleanRecallSuffix = (text: string): string => {
   t = t.replace(/\s*\^{2}\s*\[[^\]]*recall\s*slice[^\]]*\]\s*/gi, ""); // 方括号
   t = t.replace(/\s*\^{2}\s*\([^)]*recall\s*slice[^)]*\)\s*/gi, "");    // 英文圆括号
   t = t.replace(/\s*\^{2}\s*（[^）]*recall\s*slice[^）]*）\s*/gi, "");     // 中文圆括号
+  // 清理来源提示语（中英文）
+  t = t.replace(/\s*答案来自知识库\s*\^{2}\s*/gi, "");
+  t = t.replace(/\s*来源于知识库\s*\^{2}\s*/gi, "");
+  t = t.replace(/\s*Answer\s*from\s*knowledge\s*base\s*\^{2}\s*/gi, "");
+  // 清理零散的 ^^ 标记
+  t = t.replace(/\s*\^{2}\s*/g, " ");
   return t.trim();
 };
 
@@ -621,9 +672,11 @@ const getErrorMessage = (error: unknown): string => {
 };
 
 function App() {
+  const [activeTab, setActiveTab] = useState<"Chat" | "Compose" | "History">("Chat");
   const [question, setQuestion] = useState<string>("");
   const [answers, setAnswers] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [history, setHistory] = useState<string[]>([]);
   const [, setHasConfirmed] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isLoadingSecond, setIsLoadingSecond] = useState<boolean>(false);
@@ -645,6 +698,12 @@ function App() {
 
   const handleConfirm = async (): Promise<void> => {
     if (question.trim() && !isLoading) {
+      // 发送前把问题缓存到历史（去重，最多10条）
+      const q = question.trim();
+      setHistory((prev) => {
+        const next = [q, ...prev.filter((it) => it !== q)];
+        return next.slice(0, 10);
+      });
       setIsLoading(true);
       setIsLoadingSecond(false);
       // 新问题开始时清空旧内容
@@ -810,9 +869,9 @@ function App() {
   return (
     <Container>
       <TopBar>
-        <Tab $active>Chat</Tab>
-        <Tab>Compose</Tab>
-        <Tab>Insights</Tab>
+        <Tab $active={activeTab === "Chat"} onClick={() => setActiveTab("Chat")}>Chat</Tab>
+        <Tab $active={activeTab === "Compose"} onClick={() => setActiveTab("Compose")}>Compose</Tab>
+        <Tab $active={activeTab === "History"} onClick={() => setActiveTab("History")}>History</Tab>
         <FlexSpacer />
         <RefreshButton
           aria-label="刷新回答"
@@ -830,130 +889,165 @@ function App() {
           <RefreshIcon />
         </RefreshButton>
       </TopBar>
-
-      {/* 欢迎区：模仿示例图片结构与文字风格 */}
-      <HeroSection>
-        <HeroTitle>Welcome to the new Bing</HeroTitle>
-        <HeroCards>
-          <HeroCard>
-            <HeroCardText>
-              <Emoji>🧠</Emoji>
-              <span>Ask complex questions</span>
-            </HeroCardText>
-            <a href="#hero-input" aria-label="sample-question" onClick={focusHeroInput}>Learn more</a>
-          </HeroCard>
-          <HeroCard>
-            <HeroCardText>
-              <Emoji>🎨</Emoji>
-              <span>Get creative inspiration</span>
-            </HeroCardText>
-            <a href="#hero-input" aria-label="creative" onClick={focusHeroInput}>Explore</a>
-          </HeroCard>
-          <HeroCard>
-            <HeroCardText>
-              <Emoji>✍️</Emoji>
-              <span>Rewrite text together</span>
-            </HeroCardText>
-            <a href="#hero-input" aria-label="rewrite" onClick={focusHeroInput}>Try it</a>
-          </HeroCard>
-        </HeroCards>
-      </HeroSection>
-
-      {/* 新输入框：位于三张卡片下方，仅保留输入并支持回车确认 */}
-      <InputContainer id="hero-input">
-        <QuestionInput
-          ref={textareaRef}
-          placeholder="Ask complex questions (Enter to send)"
-          value={question}
-          onChange={handleInput}
-          onKeyDown={handleKeyPress}
-          rows={1}
-        />
-        <SendLink
-          href="#hero-input"
-          aria-label="send"
-          title="Send"
-          role="button"
-          tabIndex={0}
-          onClick={(e) => {
-            e.preventDefault();
-            handleConfirm();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              handleConfirm();
-            }
-          }}
-        >
-          Send
-        </SendLink>
-      </InputContainer>
-
-      {suggestions.length > 0 && (
-        <SuggestionsContainer>
-          <SectionTitle>推荐问题</SectionTitle>
-          <SuggestionList>
-            {suggestions.map((s, i) => (
-              <SuggestionCard
-                key={i}
-                role="button"
-                tabIndex={0}
-                onClick={(e) => {
-                  setQuestion(s);
-                  focusHeroInput(e as any);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    setQuestion(s);
+      {activeTab === "History" ? (
+        <HistoryContainer>
+          <HistoryTitle>History</HistoryTitle>
+          {history.length === 0 ? (
+            <HistoryEmpty>暂无历史记录</HistoryEmpty>
+          ) : (
+            <HistoryList>
+              {history.map((h, idx) => (
+                <HistoryItem
+                  key={idx}
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    setQuestion(h);
+                    setActiveTab("Chat");
                     focusHeroInput(e as any);
-                  }
-                }}
-              >
-                <SuggestionText>
-                  <Emoji>{getSuggestionEmoji(i)}</Emoji>
-                  <span>{s}</span>
-                </SuggestionText>
-              </SuggestionCard>
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setQuestion(h);
+                      setActiveTab("Chat");
+                      focusHeroInput(e as any);
+                    }
+                  }}
+                >
+                  {h}
+                </HistoryItem>
+              ))}
+            </HistoryList>
+          )}
+        </HistoryContainer>
+      ) : (
+        <>
+          {/* 欢迎区：模仿示例图片结构与文字风格 */}
+          <HeroSection>
+            <HeroTitle>Welcome to the new Bing</HeroTitle>
+            <HeroCards>
+              <HeroCard>
+                <HeroCardText>
+                  <Emoji>🧠</Emoji>
+                  <span>Ask complex questions</span>
+                </HeroCardText>
+                <a href="#hero-input" aria-label="sample-question" onClick={focusHeroInput}>Learn more</a>
+              </HeroCard>
+              <HeroCard>
+                <HeroCardText>
+                  <Emoji>🎨</Emoji>
+                  <span>Get creative inspiration</span>
+                </HeroCardText>
+                <a href="#hero-input" aria-label="creative" onClick={focusHeroInput}>Explore</a>
+              </HeroCard>
+              <HeroCard>
+                <HeroCardText>
+                  <Emoji>✍️</Emoji>
+                  <span>Rewrite text together</span>
+                </HeroCardText>
+                <a href="#hero-input" aria-label="rewrite" onClick={focusHeroInput}>Try it</a>
+              </HeroCard>
+            </HeroCards>
+          </HeroSection>
+
+          {/* 新输入框：位于三张卡片下方，仅保留输入并支持回车确认 */}
+          <InputContainer id="hero-input">
+            <QuestionInput
+              ref={textareaRef}
+              placeholder="Ask complex questions (Enter to send)"
+              value={question}
+              onChange={handleInput}
+              onKeyDown={handleKeyPress}
+              rows={1}
+            />
+            <SendLink
+              href="#hero-input"
+              aria-label="send"
+              title="Send"
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirm();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleConfirm();
+                }
+              }}
+            >
+              Send
+            </SendLink>
+          </InputContainer>
+
+          {suggestions.length > 0 && (
+            <SuggestionsContainer>
+              <SectionTitle>推荐问题</SectionTitle>
+              <SuggestionList>
+                {suggestions.map((s, i) => (
+                  <SuggestionCard
+                    key={i}
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      setQuestion(s);
+                      focusHeroInput(e as any);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setQuestion(s);
+                        focusHeroInput(e as any);
+                      }
+                    }}
+                  >
+                    <SuggestionText>
+                      <Emoji>{getSuggestionEmoji(i)}</Emoji>
+                      <span>{s}</span>
+                    </SuggestionText>
+                  </SuggestionCard>
+                ))}
+              </SuggestionList>
+            </SuggestionsContainer>
+          )}
+
+          <AnswersContainer>
+            {answers.map((answer, index) => (
+              <Fragment key={index}>
+                <AnswerItem>
+                  <div className="answer-text">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{answer}</ReactMarkdown>
+                  </div>
+                  <div
+                    className="icon-wrapper"
+                    role="button"
+                    title="复制该回答"
+                    tabIndex={0}
+                    onClick={handleCopyIconClick}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleCopyIconClick(e);
+                      }
+                    }}
+                  >
+                    <SendIcon />
+                  </div>
+                </AnswerItem>
+                {index === 0 && isLoadingSecond && (
+                  <LoadingNotice>
+                    <span>正在加载第二个回答</span>
+                    <LoadingIcon src={loadingIconUrl} alt="loading" />
+                  </LoadingNotice>
+                )}
+              </Fragment>
             ))}
-          </SuggestionList>
-        </SuggestionsContainer>
+
+          </AnswersContainer>
+        </>
       )}
-
-      <AnswersContainer>
-        {answers.map((answer, index) => (
-          <Fragment key={index}>
-            <AnswerItem>
-              <div className="answer-text">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{answer}</ReactMarkdown>
-              </div>
-              <div
-                className="icon-wrapper"
-                role="button"
-                title="复制该回答"
-                tabIndex={0}
-                onClick={handleCopyIconClick}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    handleCopyIconClick(e);
-                  }
-                }}
-              >
-                <SendIcon />
-              </div>
-            </AnswerItem>
-            {index === 0 && isLoadingSecond && (
-              <LoadingNotice>
-                <span>正在加载第二个回答</span>
-                <LoadingIcon src={loadingIconUrl} alt="loading" />
-              </LoadingNotice>
-            )}
-          </Fragment>
-        ))}
-
-      </AnswersContainer>
     </Container>
   );
 }
