@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, Fragment } from "react";
 import loadingIconUrl from "./assets/loading.png";
 import type { KeyboardEvent, ChangeEvent, SyntheticEvent } from "react";
 import styled, { keyframes } from "styled-components";
-import { CopyOutlined } from "@ant-design/icons";
+import { CopyOutlined, ReloadOutlined } from "@ant-design/icons";
 import { streamQuestion } from "./client_kn";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -30,6 +30,32 @@ const TopBar = styled.div`
   padding: 4px 8px 10px;
   border-bottom: 1px solid #eef2f6;
   margin-bottom: 10px;
+`;
+
+// 顶部栏右侧区域与刷新按钮样式
+const FlexSpacer = styled.div`
+  flex: 1;
+`;
+
+const RefreshButton = styled.button`
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8a9aa9;
+
+  &:hover {
+    background: #f4f7fb;
+    color: #5b6b7a;
+  }
+`;
+
+const RefreshIcon = styled(ReloadOutlined)`
+  font-size: 18px;
 `;
 
 const Tab = styled.button<{ $active?: boolean }>`
@@ -63,6 +89,8 @@ const InputContainer = styled.div`
   display: flex;
   gap: 8px;
   margin-bottom: 16px;
+  align-items: flex-start;
+  /* 移除内嵌 Enter 图标的定位上下文 */
 `;
 
 const QuestionInput = styled.textarea`
@@ -103,7 +131,9 @@ const QuestionInput = styled.textarea`
   }
 
   &::placeholder {
-    color: #999;
+    color: #334155; /* 与 HeroCardText 保持一致 */
+    font-size: 13px; /* 与卡片文字同尺寸 */
+    font-weight: 400;
   }
 
   &:focus {
@@ -112,6 +142,19 @@ const QuestionInput = styled.textarea`
     box-shadow: 0 2px 8px rgba(24, 144, 255, 0.1);
   }
 `;
+
+// 与 Hero 区右侧链接（Try it）一致的样式，用于发送
+const SendLink = styled.a`
+  color: #0b57d0;
+  text-decoration: none;
+  font-weight: 600;
+  align-self: center;
+  white-space: nowrap;
+
+  &:hover { text-decoration: underline; }
+`;
+
+/* 删除 EnterOverlay 内嵌提示样式 */
 
 const ConfirmButton = styled.button`
   padding: 0 20px;
@@ -179,14 +222,14 @@ const AnswerItem = styled.div`
   align-items: flex-start;
   cursor: pointer;
   transition: all 0.25s ease;
-  box-shadow: 0 2px 10px rgba(11, 87, 208, 0.05);
-  border-left: 3px solid #0b57d0;
+  box-shadow: 0 2px 10px rgba(245, 196, 83, 0.05);
+  border-left: 3px solid #F4D06F; /* 柔和金黄 */
 
   &:hover {
-    border-color: #cfe2ff;
-    box-shadow: 0 6px 16px rgba(11, 87, 208, 0.12);
+    border-color: #fde68a; /* 浅金黄边框 */
+    box-shadow: 0 6px 16px rgba(245, 196, 83, 0.18);
     transform: translateY(-1px);
-    background: linear-gradient(180deg, #f7faff 0%, #ffffff 100%);
+    background: linear-gradient(180deg, #fff7e6 0%, #ffffff 100%); /* 悬停渐变改为暖金黄 */
   }
 
   .answer-text {
@@ -360,8 +403,43 @@ const SectionTitle = styled.div`
 
 const SuggestionList = styled.div`
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
+`;
+
+const SuggestionCard = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
+  border: 1px solid #e8eef7;
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 8px rgba(11, 87, 208, 0.06);
+
+  &:hover {
+    background: linear-gradient(180deg, #f7faff 0%, #ffffff 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(11, 87, 208, 0.12);
+  }
+`;
+
+const SuggestionText = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #1f2937;
+`;
+
+const SuggestionAction = styled.a`
+  color: #0b57d0;
+  text-decoration: none;
+  font-weight: 600;
+
+  &:hover { text-decoration: underline; }
 `;
 
 // 欢迎区与功能卡片（仿图示布局）
@@ -514,6 +592,19 @@ const cleanRecallSuffix = (text: string): string => {
   return t;
 };
 
+// 为推荐问题提供不重复的灵动表情符号（新批次）
+const emojiPool = [
+  "🔎", "🚀", "📚", "🧪", "🎯", "💬", "🧭", "🧩", "📈", "🛠️",
+  "🌟", "🗣️", "🪄", "🖼️", "🎧", "🛰️", "🗺️", "🔬", "✏️", "📖",
+  "💡", "📝", "🧠", "🎨", "🧮", "🔧", "🔮", "🧵", "🌀", "🪙"
+];
+// 推荐问题前三项使用与 Hero 卡片一致的图标
+const heroEmojis: string[] = ["🧠", "🎨", "✍️"];
+const getSuggestionEmoji = (index: number): string => {
+  if (index >= 0 && index < heroEmojis.length) return heroEmojis[index];
+  return emojiPool[index] ?? "🪄";
+};
+
 // 构建两种提示语
 const buildShortPrompt = (q: string): string => `${q}（3句话以内）`;
 const buildLongPrompt = (q: string): string => `${q}（详细回答）`;
@@ -653,6 +744,30 @@ function App() {
     setQuestion(e.target.value);
   };
 
+  // 清空回答（刷新）
+  const handleRefresh = (): void => {
+    setAnswers([]);
+  };
+
+  const focusHeroInput = (e?: SyntheticEvent): void => {
+    try {
+      if (e && typeof (e as any).preventDefault === "function") {
+        (e as any).preventDefault();
+      }
+    } catch {}
+    const el = textareaRef.current;
+    if (el) {
+      el.focus();
+      try {
+        const len = (el.value || "").length;
+        el.setSelectionRange(len, len);
+      } catch {}
+      try {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      } catch {}
+    }
+  };
+
   const copyTextToClipboard = async (text: string): Promise<void> => {
     if (!text || !text.trim()) return;
     try {
@@ -696,24 +811,23 @@ function App() {
         <Tab $active>Chat</Tab>
         <Tab>Compose</Tab>
         <Tab>Insights</Tab>
-      </TopBar>
-
-      <InputContainer>
-        <QuestionInput
-          ref={textareaRef}
-          placeholder="请输入问题"
-          value={question}
-          onChange={handleInput}
-          onKeyDown={handleKeyPress}
-          rows={1}
-        />
-        <ConfirmButton
-          onClick={handleConfirm}
-          disabled={!question.trim() || isLoading}
+        <FlexSpacer />
+        <RefreshButton
+          aria-label="刷新回答"
+          title="刷新回答"
+          onClick={() => {
+            handleRefresh();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              handleRefresh();
+            }
+          }}
         >
-          {isLoading ? "请稍等..." : "确认"}
-        </ConfirmButton>
-      </InputContainer>
+          <RefreshIcon />
+        </RefreshButton>
+      </TopBar>
 
       {/* 欢迎区：模仿示例图片结构与文字风格 */}
       <HeroSection>
@@ -724,24 +838,86 @@ function App() {
               <Emoji>🧠</Emoji>
               <span>Ask complex questions</span>
             </HeroCardText>
-            <a href="#" aria-label="sample-question">Learn more</a>
+            <a href="#hero-input" aria-label="sample-question" onClick={focusHeroInput}>Learn more</a>
           </HeroCard>
           <HeroCard>
             <HeroCardText>
               <Emoji>🎨</Emoji>
               <span>Get creative inspiration</span>
             </HeroCardText>
-            <a href="#" aria-label="creative">Explore</a>
+            <a href="#hero-input" aria-label="creative" onClick={focusHeroInput}>Explore</a>
           </HeroCard>
           <HeroCard>
             <HeroCardText>
               <Emoji>✍️</Emoji>
               <span>Rewrite text together</span>
             </HeroCardText>
-            <a href="#" aria-label="rewrite">Try it</a>
+            <a href="#hero-input" aria-label="rewrite" onClick={focusHeroInput}>Try it</a>
           </HeroCard>
         </HeroCards>
       </HeroSection>
+
+      {/* 新输入框：位于三张卡片下方，仅保留输入并支持回车确认 */}
+      <InputContainer id="hero-input">
+        <QuestionInput
+          ref={textareaRef}
+          placeholder="Ask complex questions (Enter to send)"
+          value={question}
+          onChange={handleInput}
+          onKeyDown={handleKeyPress}
+          rows={1}
+        />
+        <SendLink
+          href="#hero-input"
+          aria-label="send"
+          title="Send"
+          role="button"
+          tabIndex={0}
+          onClick={(e) => {
+            e.preventDefault();
+            handleConfirm();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              handleConfirm();
+            }
+          }}
+        >
+          Send
+        </SendLink>
+      </InputContainer>
+
+      {suggestions.length > 0 && (
+        <SuggestionsContainer>
+          <SectionTitle>推荐问题</SectionTitle>
+          <SuggestionList>
+            {suggestions.map((s, i) => (
+              <SuggestionCard
+                key={i}
+                role="button"
+                tabIndex={0}
+                onClick={(e) => {
+                  setQuestion(s);
+                  focusHeroInput(e as any);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setQuestion(s);
+                    focusHeroInput(e as any);
+                  }
+                }}
+              >
+                <SuggestionText>
+                  <Emoji>{getSuggestionEmoji(i)}</Emoji>
+                  <span>{s}</span>
+                </SuggestionText>
+              </SuggestionCard>
+            ))}
+          </SuggestionList>
+        </SuggestionsContainer>
+      )}
 
       <AnswersContainer>
         {answers.map((answer, index) => (
@@ -775,18 +951,6 @@ function App() {
           </Fragment>
         ))}
 
-        {suggestions.length > 0 && (
-          <SuggestionsContainer>
-            <SectionTitle>推荐问题</SectionTitle>
-            <SuggestionList>
-              {suggestions.map((s, i) => (
-                <SuggestionChip key={i} onClick={() => setQuestion(s)}>
-                  {s}
-                </SuggestionChip>
-              ))}
-            </SuggestionList>
-          </SuggestionsContainer>
-        )}
       </AnswersContainer>
     </Container>
   );
