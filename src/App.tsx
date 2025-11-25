@@ -10,15 +10,18 @@ import remarkGfm from "remark-gfm";
 // 样式组件
 const Container = styled.div`
   width: 360px;
-  min-height: 100vh;
+  height: 100vh;
   padding: 12px;
-  margin-top: 16px;
+  /* 禁用外层滚动，仅内部区域滚动 */
+  overflow: hidden;
   background: #ffffff;
   border-radius: 14px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   border: 1px solid #eef2f6;
+  display: flex;
+  flex-direction: column;
 `;
 
 // 顶部标签栏（仿 Bing：Chat / Compose / History）
@@ -91,6 +94,11 @@ const InputContainer = styled.div`
   margin-bottom: 16px;
   align-items: flex-start;
   /* 移除内嵌 Enter 图标的定位上下文 */
+  /* 底部粘性，始终可见 */
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: #ffffff;
 `;
 
 const QuestionInput = styled.textarea`
@@ -191,6 +199,8 @@ const AnswersContainer = styled.div`
   overflow-y: auto;
   padding-right: 4px;
   margin-right: -4px;
+  /* 填充剩余空间，让输入区保持在底部 */
+  flex: 1 1 auto;
 
   /* 自定义滚动条样式 */
   &::-webkit-scrollbar {
@@ -951,68 +961,6 @@ function App() {
             </HeroCards>
           </HeroSection>
 
-          {/* 新输入框：位于三张卡片下方，仅保留输入并支持回车确认 */}
-          <InputContainer id="hero-input">
-            <QuestionInput
-              ref={textareaRef}
-              placeholder="Ask complex questions (Enter to send)"
-              value={question}
-              onChange={handleInput}
-              onKeyDown={handleKeyPress}
-              rows={1}
-            />
-            <SendLink
-              href="#hero-input"
-              aria-label="send"
-              title="Send"
-              role="button"
-              tabIndex={0}
-              onClick={(e) => {
-                e.preventDefault();
-                handleConfirm();
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  handleConfirm();
-                }
-              }}
-            >
-              Send
-            </SendLink>
-          </InputContainer>
-
-          {suggestions.length > 0 && (
-            <SuggestionsContainer>
-              <SectionTitle>推荐问题</SectionTitle>
-              <SuggestionList>
-                {suggestions.map((s, i) => (
-                  <SuggestionCard
-                    key={i}
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => {
-                      setQuestion(s);
-                      focusHeroInput(e as any);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        setQuestion(s);
-                        focusHeroInput(e as any);
-                      }
-                    }}
-                  >
-                    <SuggestionText>
-                      <Emoji>{getSuggestionEmoji(i)}</Emoji>
-                      <span>{s}</span>
-                    </SuggestionText>
-                  </SuggestionCard>
-                ))}
-              </SuggestionList>
-            </SuggestionsContainer>
-          )}
-
           <AnswersContainer>
             {answers.map((answer, index) => (
               <Fragment key={index}>
@@ -1045,7 +993,69 @@ function App() {
               </Fragment>
             ))}
 
+          {suggestions.length > 0 && (
+            <SuggestionsContainer>
+              <SectionTitle>推荐问题</SectionTitle>
+              <SuggestionList>
+                {suggestions.map((s, i) => (
+                  <SuggestionCard
+                    key={i}
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      setQuestion(s);
+                      focusHeroInput(e as any);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setQuestion(s);
+                        focusHeroInput(e as any);
+                      }
+                    }}
+                  >
+                    <SuggestionText>
+                      <Emoji>{getSuggestionEmoji(i)}</Emoji>
+                      <span>{s}</span>
+                    </SuggestionText>
+                  </SuggestionCard>
+                ))}
+              </SuggestionList>
+            </SuggestionsContainer>
+          )}
+
           </AnswersContainer>
+
+          {/* 输入框固定在底部，顶部内容可单独滚动 */}
+          <InputContainer id="hero-input">
+            <QuestionInput
+              ref={textareaRef}
+              placeholder="Ask complex questions (Enter to send)"
+              value={question}
+              onChange={handleInput}
+              onKeyDown={handleKeyPress}
+              rows={1}
+            />
+            <SendLink
+              href="#hero-input"
+              aria-label="send"
+              title="Send"
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirm();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleConfirm();
+                }
+              }}
+            >
+              Send
+            </SendLink>
+          </InputContainer>
         </>
       )}
     </Container>
