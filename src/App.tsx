@@ -587,7 +587,7 @@ const getErrorMessage = (error: unknown): string => {
 };
 
 function App() {
-  const [activeTab, setActiveTab] = useState<"Chat" | "Compose" | "History">("Chat");
+  const [activeTab, setActiveTab] = useState<"Chat" | "History">("Chat");
   const [question, setQuestion] = useState<string>("");
   const [answers, setAnswers] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -792,7 +792,6 @@ function App() {
     <Container>
       <TopBar>
         <Tab $active={activeTab === "Chat"} onClick={() => setActiveTab("Chat")}>Chat</Tab>
-        <Tab $active={activeTab === "Compose"} onClick={() => setActiveTab("Compose")}>Compose</Tab>
         <Tab $active={activeTab === "History"} onClick={() => setActiveTab("History")}>History</Tab>
         <FlexSpacer />
         <RefreshButton
