@@ -5,6 +5,12 @@ import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin, type ViteDevServer } from 'vite'
 
 import { hasJwtConfig, requestCozeAccessToken } from './server/createJwtToken'
+import {
+  CozeProxyError,
+  createCozeChatStream,
+  parseProxyPayload,
+  streamAsNdjson,
+} from './server/proxyCozeStream'
 
 const loadLocalEnv = (): void => {
   const envPath = path.resolve(process.cwd(), '.env');
@@ -108,9 +114,44 @@ const cozeLogMiddleware: Plugin = {
           // eslint-disable-next-line no-console
           console.error('Failed to create Coze JWT token', error);
           res.statusCode = 500;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Failed to generate access token' }));
+      });
+    });
+
+    server.middlewares.use('/api/coze-chat', async (req, res, _next) => {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+      if (req.method === 'OPTIONS') {
+        res.statusCode = 204;
+        res.end();
+        return;
+      }
+
+      if (req.method !== 'POST') {
+        res.statusCode = 405;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Method Not Allowed' }));
+        return;
+      }
+
+      try {
+        const payload = await parseProxyPayload(req);
+        const stream = await createCozeChatStream(payload);
+        await streamAsNdjson(stream, res);
+      } catch (error) {
+        const status =
+          error instanceof CozeProxyError
+            ? error.statusCode
+            : 500;
+        if (!res.headersSent) {
+          res.statusCode = status;
           res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ error: 'Failed to generate access token' }));
-        });
+        }
+        res.end(JSON.stringify({ error: (error as Error).message || 'Unexpected error' }));
+      }
     });
   },
 };

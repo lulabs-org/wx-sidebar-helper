@@ -1,26 +1,96 @@
 // 浏览器封装：导出 streamQuestion(question)，供页面调用
-import { RoleType, ChatEventType } from '@coze/api';
-import { client, botId, userId } from './client';
+import { ChatEventType, type StreamChatReq } from '@coze/api';
+import { cozeChatEndpoint } from './client';
+
+const CHAT_PROXY_URL = cozeChatEndpoint || '/api/coze-chat';
+
+const readErrorMessage = async (response: Response): Promise<string> => {
+  try {
+    const text = await response.text();
+    if (!text) {
+      return `${response.status} ${response.statusText}`;
+    }
+    try {
+      const data = JSON.parse(text) as { error?: unknown };
+      if (data && typeof data.error === 'string' && data.error.trim()) {
+        return data.error;
+      }
+    } catch {
+      // 非 JSON 文本，直接返回
+      return text;
+    }
+    return text;
+  } catch {
+    return `${response.status} ${response.statusText}`;
+  }
+};
+
+const parseNdjson = async function* (body: ReadableStream<Uint8Array>): AsyncGenerator<any, void, unknown> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let newlineIndex = buffer.indexOf('\n');
+    while (newlineIndex !== -1) {
+      const line = buffer.slice(0, newlineIndex).trim();
+      buffer = buffer.slice(newlineIndex + 1);
+      if (line) {
+        try {
+          yield JSON.parse(line);
+        } catch {
+          // 忽略不合法的 JSON 片段
+        }
+      }
+      newlineIndex = buffer.indexOf('\n');
+    }
+  }
+
+  const trailing = buffer.trim();
+  if (trailing) {
+    try {
+      yield JSON.parse(trailing);
+    } catch {
+      // 忽略结尾不完整的 JSON
+    }
+  }
+};
+
+const createProxyStream = async (
+  question: string,
+  options: Partial<StreamChatReq>,
+): Promise<AsyncIterable<any>> => {
+  const payload: Record<string, unknown> = { question };
+  if (options && Object.keys(options).length > 0) {
+    payload.options = options;
+  }
+
+  const response = await fetch(CHAT_PROXY_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok || !response.body) {
+    const detail = await readErrorMessage(response);
+    throw new Error(`Failed to proxy Coze chat: ${detail}`);
+  }
+
+  return parseNdjson(response.body);
+};
 
 export async function streamQuestion(
   question: string,
-  options: Record<string, unknown> = {}
+  options: Partial<StreamChatReq> = {}
 ): Promise<AsyncGenerator<string, void, unknown>> {
   const q = typeof question === 'string' ? question.trim() : '';
   if (!q) throw new Error('Question is required');
-  const stream: AsyncIterable<any> = await client.chat.stream({
-    bot_id: botId,
-    user_id: userId,
-    additional_messages: [
-      {
-        role: RoleType.User,
-        content: q,
-        content_type: 'text',
-        type: 'question',
-      },
-    ],
-    ...options,
-  });
+  const stream: AsyncIterable<any> = await createProxyStream(q, options);
 
   async function sendCompletedLog(text: string): Promise<void> {
     // 仅在开发环境上报日志，避免预览/生产因无端点报错
