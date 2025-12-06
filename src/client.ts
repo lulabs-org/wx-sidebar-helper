@@ -10,11 +10,48 @@
  */
 import { CozeAPI, COZE_CN_BASE_URL } from "@coze/api";
 
-// 创建 Coze API 客户端
+type TokenPayload = {
+  access_token?: string;
+  token?: string;
+  expires_in?: number;
+};
+
+const baseURL = import.meta.env.VITE_COZE_API_BASE_URL || COZE_CN_BASE_URL;
+const tokenEndpoint = import.meta.env.VITE_COZE_JWT_TOKEN_URL || "/api/coze-token";
+
+let cachedToken: { value: string; expiresAt: number } | null = null;
+
+const fetchBrowserToken = async (): Promise<string> => {
+  const now = Date.now();
+  if (cachedToken && cachedToken.expiresAt > now) return cachedToken.value;
+
+  const response = await fetch(tokenEndpoint, {
+    headers: { Accept: "application/json" },
+    credentials: "same-origin",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch Coze token: ${response.status} ${response.statusText}`);
+  }
+
+  const payload = (await response.json()) as TokenPayload;
+  const token = payload.access_token || payload.token;
+  if (!token) {
+    throw new Error("JWT token endpoint did not return access_token");
+  }
+
+  const ttl = typeof payload.expires_in === "number" ? payload.expires_in * 1000 : 0;
+  cachedToken = {
+    value: token,
+    expiresAt: ttl ? Date.now() + ttl - 5_000 : Date.now() + 5 * 60_000,
+  };
+  return token;
+};
+
+// 创建 Coze API 客户端（使用后台获取的 JWT OAuth 访问令牌）
 export const client = new CozeAPI({
-  token: import.meta.env.VITE_COZE_API_KEY,
-  baseURL: import.meta.env.VITE_COZE_API_BASE_URL || COZE_CN_BASE_URL,
-  allowPersonalAccessTokenInBrowser: true, // 允许在浏览器中使用 PAT
+  token: fetchBrowserToken,
+  baseURL,
 });
 
 // 机器人 ID
