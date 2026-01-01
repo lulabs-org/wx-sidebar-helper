@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, Fragment } from "react";
+﻿import { useState, useRef, useEffect, Fragment } from "react";
 import loadingIconUrl from "./assets/loading.png";
 import type { KeyboardEvent, ChangeEvent, SyntheticEvent } from "react";
 import styled, { keyframes } from "styled-components";
@@ -696,31 +696,39 @@ const HistoryTitle = styled.div`
 const SearchInputWrapper = styled.div`
   position: relative;
   margin-bottom: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+`;
+
+const SearchInputContainer = styled.div`
+  position: relative;
+  flex: 1;
 `;
 
 const SearchIcon = styled.span`
   position: absolute;
-  left: 14px;
+  left: 12px;
   top: 50%;
   transform: translateY(-50%);
   color: #9ca3af;
-  font-size: 16px;
+  font-size: 14px;
   pointer-events: none;
   z-index: 1;
 `;
 
 const ClearSearchButton = styled.button`
   position: absolute;
-  right: 10px;
+  right: 8px;
   top: 50%;
   transform: translateY(-50%);
   background: #f3f4f6;
   border: none;
   color: #6b7280;
   cursor: pointer;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 5px;
+  font-size: 11px;
   font-weight: 500;
   transition: all 0.2s ease;
   z-index: 1;
@@ -736,19 +744,23 @@ const ClearSearchButton = styled.button`
 `;
 
 const HistorySearchInput = styled(QuestionInput)`
+  flex: 1;
   padding-left: 42px;
   padding-right: 70px;
-  min-height: 44px;
+  min-height: 36px;
+  max-height: 36px;
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: 13px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   transition: all 0.25s ease;
+  resize: none;
+  overflow: hidden;
   
   &::placeholder {
     color: #9ca3af;
-    font-size: 14px;
+    font-size: 13px;
   }
   
   &:focus {
@@ -959,11 +971,62 @@ const SortOptions = styled.div`
   margin-bottom: 10px;
 `;
 
-const TimeFilterOptions = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 14px;
+const FilterButton = styled.button<{ $active?: boolean }>`
+  min-width: 36px;
+  height: 36px;
+  background: ${({ $active }) => ($active ? "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)" : "white")};
+  border: 1px solid ${({ $active }) => ($active ? "#3b82f6" : "#e5e7eb")};
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+  box-shadow: ${({ $active }) => 
+    $active ? "0 2px 8px rgba(59, 130, 246, 0.2)" : "0 2px 8px rgba(0, 0, 0, 0.04)"};
+  position: relative;
+  
+  &:hover {
+    background: ${({ $active }) => ($active ? "linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%)" : "#f0f9ff")};
+    border-color: #3b82f6;
+    transform: translateY(-1px);
+    box-shadow: ${({ $active }) => 
+      $active ? "0 4px 12px rgba(59, 130, 246, 0.3)" : "0 2px 6px rgba(59, 130, 246, 0.15)"};
+  }
+  
+  &:active {
+    transform: translateY(0) scale(0.98);
+  }
+  
+  svg {
+    width: 16px;
+    height: 16px;
+    color: ${({ $active }) => ($active ? "#1e40af" : "#6b7280")};
+    transition: color 0.25s ease;
+  }
+  
+  &:hover svg {
+    color: #1e40af;
+  }
+`;
+
+const TimeFilterOptions = styled.div<{ $show?: boolean }>`
+  display: ${({ $show }) => ($show ? "flex" : "none")};
+  gap: 6px;
+  margin-bottom: 12px;
+  align-items: center;
+  animation: slideDown 0.3s ease;
+  
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 `;
 
 const TimeFilterButton = styled.button<{ $active?: boolean; disabled?: boolean }>`
@@ -973,22 +1036,23 @@ const TimeFilterButton = styled.button<{ $active?: boolean; disabled?: boolean }
     disabled ? "#e5e7eb" : $active ? "#fbbf24" : "#e5e7eb"};
   color: ${({ $active, disabled }) => 
     disabled ? "#9ca3af" : $active ? "#92400e" : "#6b7280"};
-  padding: 10px 6px;
-  border-radius: 10px;
-  font-size: 11px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
   font-weight: ${({ $active }) => ($active ? 600 : 500)};
   cursor: ${({ disabled }) => (disabled ? "not-allowed" : "pointer")};
   transition: all 0.25s ease;
   display: flex;
-  flex-direction: column;
+  flex: 1;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 6px;
   opacity: ${({ disabled }) => (disabled ? 0.5 : 1)};
   box-shadow: ${({ $active }) => 
-    $active ? "0 3px 10px rgba(251, 191, 36, 0.3)" : "0 2px 6px rgba(0, 0, 0, 0.04)"};
+    $active ? "0 2px 8px rgba(251, 191, 36, 0.25)" : "0 1px 3px rgba(0, 0, 0, 0.04)"};
   position: relative;
   overflow: hidden;
+  white-space: nowrap;
   
   /* 激活状态的光泽效果 */
   &::before {
@@ -1003,24 +1067,23 @@ const TimeFilterButton = styled.button<{ $active?: boolean; disabled?: boolean }
   }
   
   span:first-child {
-    font-size: 20px;
+    font-size: 16px;
     line-height: 1;
     transition: transform 0.25s ease;
   }
   
   span:last-child {
-    line-height: 1.2;
-    white-space: nowrap;
+    line-height: 1;
   }
   
   &:hover:not(:disabled) {
     background: ${({ $active, disabled }) => 
       disabled ? "#f9fafb" : $active ? "linear-gradient(135deg, #fde68a 0%, #fcd34d 100%)" : "#fffbeb"};
     border-color: ${({ disabled }) => (disabled ? "#e5e7eb" : "#fbbf24")};
-    transform: ${({ disabled }) => (disabled ? "none" : "translateY(-2px)")};
+    transform: ${({ disabled }) => (disabled ? "none" : "translateY(-1px)")};
     box-shadow: ${({ $active, disabled }) => 
-      disabled ? "0 2px 6px rgba(0, 0, 0, 0.04)" : 
-      $active ? "0 6px 16px rgba(251, 191, 36, 0.4)" : "0 4px 10px rgba(245, 196, 83, 0.2)"};
+      disabled ? "0 1px 3px rgba(0, 0, 0, 0.04)" : 
+      $active ? "0 4px 12px rgba(251, 191, 36, 0.35)" : "0 3px 8px rgba(245, 196, 83, 0.2)"};
     
     span:first-child {
       transform: scale(1.1);
@@ -1032,7 +1095,7 @@ const TimeFilterButton = styled.button<{ $active?: boolean; disabled?: boolean }
   }
   
   &:active:not(:disabled) {
-    transform: ${({ disabled }) => (disabled ? "none" : "translateY(0) scale(0.96)")};
+    transform: ${({ disabled }) => (disabled ? "none" : "translateY(0) scale(0.98)")};
   }
 `;
 
@@ -1481,6 +1544,7 @@ function App() {
   const [historySearch, setHistorySearch] = useState<string>(""); // 历史记录搜索
   const [historySortBy, setHistorySortBy] = useState<"time" | "relevance">("time"); // 排序方式
   const [historyTimeFilter, setHistoryTimeFilter] = useState<TimeFilter>("all"); // 时间筛选
+  const [showTimeFilter, setShowTimeFilter] = useState<boolean>(false); // 显示时间筛选
   const [selectedHistory, setSelectedHistory] = useState<HistoryRecord | null>(null); // 选中的历史记录
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false); // 加载历史记录
   const [, setHasConfirmed] = useState<boolean>(false);
@@ -1906,9 +1970,42 @@ function App() {
               <span>历史记录</span>
             </HistoryTitle>
             
-            {/* 时间筛选选项 - 只在有时间字段时显示 */}
+            <SearchInputWrapper>
+              <SearchInputContainer>
+                <SearchIcon>🔍</SearchIcon>
+                <HistorySearchInput
+                  placeholder="搜索问题或答案..."
+                  value={historySearch}
+                  onChange={(e) => setHistorySearch(e.target.value)}
+                />
+                {historySearch && (
+                  <ClearSearchButton
+                    onClick={() => setHistorySearch("")}
+                    aria-label="清空搜索"
+                  >
+                    清空
+                  </ClearSearchButton>
+                )}
+              </SearchInputContainer>
+              
+              {/* 筛选按钮 - 只在有时间字段时显示 */}
+              {hasCreatedAtColumn && (
+                <FilterButton
+                  $active={showTimeFilter}
+                  onClick={() => setShowTimeFilter(!showTimeFilter)}
+                  aria-label="时间筛选"
+                  title="时间筛选"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                  </svg>
+                </FilterButton>
+              )}
+            </SearchInputWrapper>
+            
+            {/* 时间筛选选项 - 只在有时间字段且展开时显示 */}
             {hasCreatedAtColumn ? (
-              <TimeFilterOptions>
+              <TimeFilterOptions $show={showTimeFilter}>
                 <TimeFilterButton
                   $active={historyTimeFilter === "all"}
                   onClick={() => setHistoryTimeFilter("all")}
@@ -1944,23 +2041,6 @@ function App() {
                 <span>数据库缺少时间字段，无法按时间筛选。<a href="SUPABASE_SETUP.md" target="_blank" style={{ color: '#f59e0b', textDecoration: 'underline' }}>查看设置指南</a></span>
               </TimeFilterHint>
             )}
-            
-            <SearchInputWrapper>
-              <SearchIcon>🔍</SearchIcon>
-              <HistorySearchInput
-                placeholder="搜索问题或答案..."
-                value={historySearch}
-                onChange={(e) => setHistorySearch(e.target.value)}
-              />
-              {historySearch && (
-                <ClearSearchButton
-                  onClick={() => setHistorySearch("")}
-                  aria-label="清空搜索"
-                >
-                  清空
-                </ClearSearchButton>
-              )}
-            </SearchInputWrapper>
             
             {/* 排序选项 */}
             {historySearch && filteredDbHistory.length > 0 && (
