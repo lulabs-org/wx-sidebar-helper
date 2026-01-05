@@ -5,6 +5,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { CozeAPI as CozeAPIClient, ChatEventType, RoleType, COZE_CN_BASE_URL } from '@coze/api';
 
+import { hasJwtConfig, requestCozeAccessToken } from '../server/createJwtToken';
+
 function getErrorMessage(error: unknown): string {
   if (typeof error === 'string') return error;
   if (error && typeof error === 'object') {
@@ -34,9 +36,13 @@ function loadEnv(): Record<string, string | undefined> {
 }
 
 async function getToken(env: Record<string, string | undefined>): Promise<string> {
-  // 优先使用已存在的环境变量
+  if (hasJwtConfig(env)) {
+    const token = await requestCozeAccessToken(env);
+    return token.access_token;
+  }
+
+  // 可选：直接提供已获取的短期 token
   if (env.COZE_TOKEN) return env.COZE_TOKEN as string;
-  if (env.VITE_COZE_API_KEY) return env.VITE_COZE_API_KEY as string;
 
   // 可选：通过自有后端动态获取临时 token（需配置 COZE_TOKEN_URL）
   if (env.COZE_TOKEN_URL) {
@@ -57,7 +63,9 @@ async function getToken(env: Record<string, string | undefined>): Promise<string
     return tok as string;
   }
 
-  throw new Error('No token available. Set COZE_TOKEN / VITE_COZE_API_KEY or COZE_TOKEN_URL.');
+  throw new Error(
+    'No token available. Configure JWT env (COZE_JWT_APP_ID/COZE_JWT_KEY_ID/COZE_JWT_PRIVATE_KEY) or set COZE_TOKEN / COZE_TOKEN_URL.',
+  );
 }
 
 (async () => {

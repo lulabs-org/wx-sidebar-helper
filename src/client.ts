@@ -8,20 +8,10 @@
  *
  * Copyright (c) 2025 by ${git_name_email}, All Rights Reserved.
  */
-import { CozeAPI, COZE_CN_BASE_URL } from "@coze/api";
+const DEFAULT_CHAT_ENDPOINT = "/api/coze-chat";
 
-// 创建 Coze API 客户端
-export const client = new CozeAPI({
-  token: import.meta.env.VITE_COZE_API_KEY,
-  baseURL: import.meta.env.VITE_COZE_API_BASE_URL || COZE_CN_BASE_URL,
-  allowPersonalAccessTokenInBrowser: true, // 允许在浏览器中使用 PAT
-});
-
-// 机器人 ID
-export const botId = import.meta.env.VITE_COZE_BOT_ID;
+// 后端代理地址：统一通过服务端完成 JWT 签发与转发
+export const cozeChatEndpoint = import.meta.env.VITE_COZE_CHAT_URL || DEFAULT_CHAT_ENDPOINT;
 
 // 工具函数
 export const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
-
-// 用户 ID（用于会话标识），可在 .env 设置 VITE_COZE_USER_ID
-export const userId = import.meta.env.VITE_COZE_USER_ID || "web-user";
