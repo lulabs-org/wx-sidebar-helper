@@ -24,11 +24,11 @@ const Container = styled.div`
   flex-direction: column;
 `;
 
-// 顶部标签栏（仿 Bing：Chat / Compose / History）
+// 顶部标签栏（仿 Bing：Chat / Meeting / History）
 const TopBar = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   height: 40px;
   padding: 4px 8px 10px;
   border-bottom: 1px solid #eef2f6;
@@ -67,7 +67,7 @@ const Tab = styled.button<{ $active?: boolean }>`
   font-size: 13px;
   color: ${({ $active }) => ($active ? "#0b57d0" : "#5b6b7a")};
   font-weight: ${({ $active }) => ($active ? 600 : 500)};
-  padding: 8px 10px;
+  padding: 7px 8px;
   border-radius: 6px;
   cursor: pointer;
   position: relative;
@@ -587,7 +587,7 @@ const getErrorMessage = (error: unknown): string => {
 };
 
 function App() {
-  const [activeTab, setActiveTab] = useState<"Chat" | "History">("Chat");
+  const [activeTab, setActiveTab] = useState<"Chat" | "Meeting" | "History">("Chat");
   const [question, setQuestion] = useState<string>("");
   const [answers, setAnswers] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -792,6 +792,7 @@ function App() {
     <Container>
       <TopBar>
         <Tab $active={activeTab === "Chat"} onClick={() => setActiveTab("Chat")}>Chat</Tab>
+        <Tab $active={activeTab === "Meeting"} onClick={() => setActiveTab("Meeting")}>Meeting</Tab>
         <Tab $active={activeTab === "History"} onClick={() => setActiveTab("History")}>History</Tab>
         <FlexSpacer />
         <RefreshButton
