@@ -157,5 +157,6 @@ const cozeLogMiddleware: Plugin = {
 };
 
 export default defineConfig({
+  envPrefix: ['VITE_', 'ARK_'],
   plugins: [react(), cozeLogMiddleware],
 })
