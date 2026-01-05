@@ -4,8 +4,10 @@ import type { KeyboardEvent, ChangeEvent, SyntheticEvent } from "react";
 import styled, { keyframes } from "styled-components";
 import { CopyOutlined, ReloadOutlined } from "@ant-design/icons";
 import { streamQuestion } from "./client_kn";
+import { buildMeetingNotice } from "./meetingNotice";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 
 // 样式组件
 const Container = styled.div`
@@ -149,6 +151,115 @@ const QuestionInput = styled.textarea`
     border-color: #1890ff;
     box-shadow: 0 2px 8px rgba(24, 144, 255, 0.1);
   }
+`;
+
+const MeetingForm = styled.div`
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  max-height: 42vh;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-right: -4px;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 2px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: #999;
+  }
+`;
+
+const MeetingField = styled.label`
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: #6b7280;
+`;
+
+const MeetingInput = styled.input`
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  color: #333;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  transition: all 0.3s ease;
+  line-height: 1.4;
+  font-family: inherit;
+
+  &:focus {
+    outline: none;
+    border-color: #1890ff;
+    box-shadow: 0 2px 8px rgba(24, 144, 255, 0.1);
+  }
+`;
+
+const MeetingPaste = styled.textarea`
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px dashed #d7dde3;
+  border-radius: 8px;
+  font-size: 13px;
+  background: #f8fafc;
+  color: #333;
+  line-height: 1.5;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 76px;
+
+  &:focus {
+    outline: none;
+    border-color: #1890ff;
+    box-shadow: 0 2px 8px rgba(24, 144, 255, 0.08);
+    background: #ffffff;
+  }
+`;
+
+const MeetingHint = styled.div`
+  font-size: 12px;
+  color: #8a9aa9;
+  margin-top: 2px;
+`;
+
+const MeetingGroup = styled.div`
+  border: 1px solid #eef2f6;
+  border-radius: 10px;
+  padding: 10px;
+  background: #fbfdff;
+  display: grid;
+  gap: 8px;
+`;
+
+const MeetingGroupTitle = styled.div`
+  font-size: 12px;
+  font-weight: 600;
+  color: #3b4a59;
+`;
+
+const MeetingRow = styled.div`
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 8px;
+`;
+
+const MeetingActions = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 4px;
 `;
 
 // 与 Hero 区右侧链接（Try it）一致的样式，用于发送
@@ -586,6 +697,15 @@ const getErrorMessage = (error: unknown): string => {
   return String(error);
 };
 
+type MeetingFormState = {
+  link1: string;
+  id1: string;
+  topic1: string;
+  link2: string;
+  id2: string;
+  topic2: string;
+};
+
 function App() {
   const [activeTab, setActiveTab] = useState<"Chat" | "Meeting" | "History">("Chat");
   const [question, setQuestion] = useState<string>("");
@@ -597,10 +717,23 @@ function App() {
   const [isLoadingFirst, setIsLoadingFirst] = useState<boolean>(false);
   const [isLoadingSecond, setIsLoadingSecond] = useState<boolean>(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const meetingSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const meetingBuildTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasChunkRef = useRef<boolean>(false);
+  const [meetingForm, setMeetingForm] = useState<MeetingFormState>({
+    link1: "",
+    id1: "",
+    topic1: "",
+    link2: "",
+    id2: "",
+    topic2: "",
+  });
+  const [meetingPaste, setMeetingPaste] = useState<string>("");
+  const [meetingResponse, setMeetingResponse] = useState<string>("");
+  const [meetingLoading, setMeetingLoading] = useState<boolean>(false);
+  const [meetingError, setMeetingError] = useState<string>("");
 
-  const adjustHeight = (): void => {
-    const textarea = textareaRef.current;
+  const adjustTextareaHeight = (textarea: HTMLTextAreaElement | null): void => {
     if (textarea) {
       textarea.style.height = "auto";
       const newHeight = Math.min(Math.max(42, textarea.scrollHeight), 126);
@@ -609,7 +742,7 @@ function App() {
   };
 
   useEffect(() => {
-    adjustHeight();
+    adjustTextareaHeight(textareaRef.current);
   }, [question]);
 
   const handleConfirm = async (): Promise<void> => {
@@ -727,6 +860,126 @@ function App() {
     setQuestion(e.target.value);
   };
 
+  const saveMeetingInput = async (text: string): Promise<void> => {
+    try {
+      await fetch("/api/meeting-save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+        keepalive: true,
+      });
+    } catch (error) {
+      console.warn("Failed to save meeting input:", error);
+    }
+  };
+
+  const composeMeetingInput = (form: MeetingFormState): string =>
+    [form.link1, form.id1, form.topic1, form.link2, form.id2, form.topic2].join("\n");
+
+  const extractMeetingPair = (line: string): [string, string] | null => {
+    const urlMatch = line.match(/https?:\/\/\S+/);
+    const idMatch = line.match(/\d[\d-]{6,}/);
+    if (!urlMatch || !idMatch) return null;
+    return [urlMatch[0], idMatch[0]];
+  };
+
+  const parseMeetingPaste = (raw: string): MeetingFormState | null => {
+    const lines = raw
+      .replace(/\r\n/g, "\n")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (lines.length >= 6) {
+      const [link1, id1, topic1, link2, id2, topic2] = lines;
+      return { link1, id1, topic1, link2, id2, topic2 };
+    }
+    if (lines.length >= 4) {
+      const [link1, id1, link2, id2] = lines;
+      return { link1, id1, topic1: "", link2, id2, topic2: "" };
+    }
+    if (lines.length === 2) {
+      const first = extractMeetingPair(lines[0]);
+      const second = extractMeetingPair(lines[1]);
+      if (first && second) {
+        const [link1, id1] = first;
+        const [link2, id2] = second;
+        return { link1, id1, topic1: "", link2, id2, topic2: "" };
+      }
+    }
+    return null;
+  };
+
+  const queueMeetingSave = (text: string): void => {
+    if (meetingSaveTimerRef.current) {
+      window.clearTimeout(meetingSaveTimerRef.current);
+    }
+    meetingSaveTimerRef.current = window.setTimeout(() => {
+      meetingSaveTimerRef.current = null;
+      void saveMeetingInput(text);
+    }, 400);
+  };
+
+  const buildMeetingNoticeFromForm = (form: MeetingFormState, silent = false): void => {
+    const link1 = form.link1.trim();
+    const id1 = form.id1.trim();
+    const topic1 = form.topic1.trim();
+    const link2 = form.link2.trim();
+    const id2 = form.id2.trim();
+    const topic2 = form.topic2.trim();
+    if (!link1 || !id1 || !link2 || !id2) {
+      if (!silent) {
+        setMeetingError("请填写完整的会议链接与会议号");
+      } else {
+        setMeetingError("");
+      }
+      setMeetingResponse("");
+      return;
+    }
+    setMeetingResponse(buildMeetingNotice({ link1, id1, topic1, link2, id2, topic2 }));
+    setMeetingError("");
+    setMeetingLoading(false);
+  };
+
+  const queueMeetingBuild = (form: MeetingFormState): void => {
+    if (meetingBuildTimerRef.current) {
+      window.clearTimeout(meetingBuildTimerRef.current);
+    }
+    meetingBuildTimerRef.current = window.setTimeout(() => {
+      meetingBuildTimerRef.current = null;
+      buildMeetingNoticeFromForm(form, true);
+    }, 400);
+  };
+
+  const updateMeetingForm = (field: keyof MeetingFormState) => (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setMeetingForm((prev) => {
+      const next = { ...prev, [field]: value };
+      queueMeetingSave(composeMeetingInput(next));
+      queueMeetingBuild(next);
+      return next;
+    });
+    setMeetingError("");
+  };
+
+  const handleMeetingPaste = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setMeetingPaste(value);
+    const parsed = parseMeetingPaste(value);
+    if (parsed) {
+      setMeetingForm(parsed);
+      queueMeetingSave(composeMeetingInput(parsed));
+      queueMeetingBuild(parsed);
+      setMeetingError("");
+    }
+  };
+
+  const handleMeetingFieldKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      buildMeetingNoticeFromForm(meetingForm, false);
+    }
+  };
+
   // 清空回答（刷新）
   const handleRefresh = (): void => {
     setAnswers([]);
@@ -788,6 +1041,7 @@ function App() {
     }
   };
 
+
   return (
     <Container>
       <TopBar>
@@ -843,6 +1097,123 @@ function App() {
             </HistoryList>
           )}
         </HistoryContainer>
+      ) : activeTab === "Meeting" ? (
+        <>
+          <MeetingForm id="meeting-form">
+            <MeetingField>
+              <span>快速粘贴（可选）</span>
+              <MeetingPaste
+                value={meetingPaste}
+                onChange={handleMeetingPaste}
+                placeholder={"链接1\n会议号1\n会议主题A\n链接2\n会议号2\n会议主题B"}
+              />
+              <MeetingHint>粘贴 6 行会自动填充，也支持 4 行或 2 行（每行含链接与会议号）。</MeetingHint>
+            </MeetingField>
+            <MeetingGroup>
+              <MeetingGroupTitle>会场A（Level2&Level3）</MeetingGroupTitle>
+              <MeetingRow>
+                <MeetingField>
+                  <span>会议链接1</span>
+                  <MeetingInput
+                    value={meetingForm.link1}
+                    onChange={updateMeetingForm("link1")}
+                    onKeyDown={handleMeetingFieldKeyDown}
+                    placeholder="https://meeting.tencent.com/..."
+                  />
+                </MeetingField>
+                <MeetingField>
+                  <span>会议号1</span>
+                  <MeetingInput
+                    value={meetingForm.id1}
+                    onChange={updateMeetingForm("id1")}
+                    onKeyDown={handleMeetingFieldKeyDown}
+                    placeholder="例如：422-7274-0163"
+                  />
+                </MeetingField>
+              </MeetingRow>
+              <MeetingField>
+                <span>会议主题A</span>
+                <MeetingInput
+                  value={meetingForm.topic1}
+                  onChange={updateMeetingForm("topic1")}
+                  onKeyDown={handleMeetingFieldKeyDown}
+                  placeholder="例如：结营&答疑"
+                />
+              </MeetingField>
+            </MeetingGroup>
+            <MeetingGroup>
+              <MeetingGroupTitle>会场B（Level3&Level4&Level5）</MeetingGroupTitle>
+              <MeetingRow>
+                <MeetingField>
+                  <span>会议链接2</span>
+                  <MeetingInput
+                    value={meetingForm.link2}
+                    onChange={updateMeetingForm("link2")}
+                    onKeyDown={handleMeetingFieldKeyDown}
+                    placeholder="https://meeting.tencent.com/..."
+                  />
+                </MeetingField>
+                <MeetingField>
+                  <span>会议号2</span>
+                  <MeetingInput
+                    value={meetingForm.id2}
+                    onChange={updateMeetingForm("id2")}
+                    onKeyDown={handleMeetingFieldKeyDown}
+                    placeholder="例如：366-2659-2605"
+                  />
+                </MeetingField>
+              </MeetingRow>
+              <MeetingField>
+                <span>会议主题B</span>
+                <MeetingInput
+                  value={meetingForm.topic2}
+                  onChange={updateMeetingForm("topic2")}
+                  onKeyDown={handleMeetingFieldKeyDown}
+                  placeholder="例如：训练营结营&项目成果展示"
+                />
+              </MeetingField>
+            </MeetingGroup>
+            <MeetingActions>
+              <MeetingHint>已自动生成并实时保存到资源目录</MeetingHint>
+            </MeetingActions>
+          </MeetingForm>
+
+          <AnswersContainer>
+            {meetingLoading && !meetingResponse && (
+              <LoadingNotice>
+                <span>正在生成会议文案</span>
+                <LoadingIcon src={loadingIconUrl} alt="loading" />
+              </LoadingNotice>
+            )}
+            {meetingError && (
+              <AnswerItem>
+                <div className="answer-text">提示：{meetingError}</div>
+              </AnswerItem>
+            )}
+            {meetingResponse && (
+              <AnswerItem>
+                <div className="answer-text">
+                  <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{meetingResponse}</ReactMarkdown>
+                </div>
+                <div
+                  className="icon-wrapper"
+                  role="button"
+                  title="复制该回答"
+                  tabIndex={0}
+                  onClick={handleCopyIconClick}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleCopyIconClick(e);
+                    }
+                  }}
+                >
+                  <SendIcon />
+                </div>
+              </AnswerItem>
+            )}
+          </AnswersContainer>
+        </>
       ) : (
         <>
           {/* 欢迎区与卡片已移除，下面直接展示回答与输入区域 */}
