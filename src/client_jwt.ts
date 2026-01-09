@@ -71,7 +71,7 @@ export async function streamQuestion(
 
   const client = await createClient();
   
-  const stream: AsyncIterable<any> = await client.chat.stream({
+  const stream: AsyncIterable<any> = client.chat.stream({
     bot_id: BOT_ID,
     user_id: USER_ID,
     additional_messages: [
