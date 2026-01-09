@@ -23,8 +23,7 @@ async function fetchAccessToken(): Promise<string> {
   }
 
   const response = await fetch(TOKEN_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: 'GET',
   });
 
   if (!response.ok) {
