@@ -290,6 +290,29 @@ const MeetingHint = styled.div`
   font-size: 12px;
   color: #8a9aa9;
   margin-top: 2px;
+  flex: 1;
+`;
+
+const MeetingGenerateButton = styled.button`
+  border: none;
+  background: #0b57d0;
+  color: #ffffff;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+
+  &:hover {
+    background: #0a4bb8;
+  }
+
+  &:disabled {
+    background: #c7d2e0;
+    cursor: not-allowed;
+  }
 `;
 
 const MeetingGroup = styled.div`
@@ -318,6 +341,7 @@ const MeetingActions = styled.div`
   justify-content: space-between;
   align-items: center;
   padding-top: 4px;
+  gap: 8px;
 `;
 
 // 与 Hero 区右侧链接（Try it）一致的样式，用于发送
@@ -911,6 +935,7 @@ function App() {
   const [meetingResponse, setMeetingResponse] = useState<string>("");
   const [meetingLoading, setMeetingLoading] = useState<boolean>(false);
   const [meetingError, setMeetingError] = useState<string>("");
+  const [useMeetingAI, setUseMeetingAI] = useState<boolean>(false);
 
   const adjustTextareaHeight = (textarea: HTMLTextAreaElement | null): void => {
     if (textarea) {
@@ -1253,19 +1278,78 @@ function App() {
       setMeetingResponse("");
       return;
     }
-    setMeetingResponse(buildMeetingNotice({ link1, id1, topic1, link2, id2, topic2 }));
+    
+    if (useMeetingAI) {
+      // 使用 AI 生成
+      generateMeetingNoticeWithAI(form);
+    } else {
+      // 使用原有代码生成
+      setMeetingResponse(buildMeetingNotice({ link1, id1, topic1, link2, id2, topic2 }));
+      setMeetingError("");
+      setMeetingLoading(false);
+    }
+  };
+
+  const generateMeetingNoticeWithAI = async (form: MeetingFormState): Promise<void> => {
+    setMeetingLoading(true);
     setMeetingError("");
-    setMeetingLoading(false);
+    setMeetingResponse("");
+
+    const topic1 = form.topic1.trim() || "结营&答疑";
+    const topic2 = form.topic2.trim() || "训练营结营&项目成果展示";
+
+    const prompt = `请生成会议通知，参数如下：
+会议链接1: ${form.link1}
+会议号1: ${form.id1}
+会议主题A: ${topic1}
+会议链接2: ${form.link2}
+会议号2: ${form.id2}
+会议主题B: ${topic2}`;
+
+    try {
+      const stream = useCoze 
+        ? await streamCozeQuestion(prompt)
+        : await streamDoubaoQuestion(buildDoubaoPrompt(prompt));
+
+      let fullResponse = "";
+
+      if (useCoze) {
+        for await (const evt of stream) {
+          const chunk = extractAssistantText(evt);
+          if (!chunk) continue;
+          const cleaned = cleanRecallSuffix(chunk);
+          if (!cleaned) continue;
+          fullResponse += cleaned;
+          setMeetingResponse(fullResponse);
+        }
+      } else {
+        for await (const chunk of stream) {
+          if (!chunk) continue;
+          fullResponse += chunk;
+          setMeetingResponse(fullResponse);
+        }
+      }
+
+      setMeetingError("");
+    } catch (error) {
+      const detail = getErrorMessage(error);
+      console.error("AI 生成会议通知失败:", detail);
+      setMeetingError("AI 生成失败，请重试");
+    } finally {
+      setMeetingLoading(false);
+    }
   };
 
   const queueMeetingBuild = (form: MeetingFormState): void => {
-    if (meetingBuildTimerRef.current) {
-      window.clearTimeout(meetingBuildTimerRef.current);
+    // 移除自动生成，改为手动点击按钮生成
+    // 只做表单验证
+    const link1 = form.link1.trim();
+    const id1 = form.id1.trim();
+    const link2 = form.link2.trim();
+    const id2 = form.id2.trim();
+    if (!link1 || !id1 || !link2 || !id2) {
+      setMeetingError("");
     }
-    meetingBuildTimerRef.current = window.setTimeout(() => {
-      meetingBuildTimerRef.current = null;
-      buildMeetingNoticeFromForm(form, true);
-    }, 400);
   };
 
   const updateMeetingForm = (field: keyof MeetingFormState) => (e: ChangeEvent<HTMLInputElement>) => {
@@ -1504,7 +1588,27 @@ function App() {
               </MeetingField>
             </MeetingGroup>
             <MeetingActions>
-              <MeetingHint>已自动生成并实时保存到资源目录</MeetingHint>
+              <ProviderToggle $disabled={meetingLoading} title="切换生成方式">
+                <ToggleLabel $active={!useMeetingAI}>代码</ToggleLabel>
+                <ToggleInput
+                  type="checkbox"
+                  checked={useMeetingAI}
+                  onChange={() => setUseMeetingAI((prev) => !prev)}
+                  disabled={meetingLoading}
+                  aria-label="切换 AI 生成"
+                />
+                <ToggleTrack />
+                <ToggleLabel $active={useMeetingAI}>AI</ToggleLabel>
+              </ProviderToggle>
+              <MeetingHint>
+                {useMeetingAI ? "使用 AI 智能生成会议通知" : "使用代码快速生成会议通知"}
+              </MeetingHint>
+              <MeetingGenerateButton
+                onClick={() => buildMeetingNoticeFromForm(meetingForm, false)}
+                disabled={meetingLoading || !meetingForm.link1 || !meetingForm.id1 || !meetingForm.link2 || !meetingForm.id2}
+              >
+                {meetingLoading ? "生成中..." : "立即生成"}
+              </MeetingGenerateButton>
             </MeetingActions>
           </MeetingForm>
 
