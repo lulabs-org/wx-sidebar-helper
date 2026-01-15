@@ -158,4 +158,13 @@ const cozeLogMiddleware: Plugin = {
 
 export default defineConfig({
   plugins: [react(), cozeLogMiddleware],
+  server: {
+    proxy: {
+      '/ark-api': {
+        target: 'https://ark.cn-beijing.volces.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/ark-api/, '/api/v3'),
+      },
+    },
+  },
 })

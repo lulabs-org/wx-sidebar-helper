@@ -3,9 +3,11 @@ import loadingIconUrl from "./assets/loading.png";
 import type { KeyboardEvent, ChangeEvent, SyntheticEvent } from "react";
 import styled, { keyframes } from "styled-components";
 import { CopyOutlined, ReloadOutlined } from "@ant-design/icons";
-import { streamQuestion } from "./client_kn";
+import { streamQuestion as streamCozeQuestion } from "./client_kn";
+import { streamQuestion as streamDoubaoQuestion } from "./client_doubao";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import doubaoCorpus from "./assets/resources/doubao-corpus.md?raw";
 
 // 样式组件
 const Container = styled.div`
@@ -38,6 +40,43 @@ const TopBar = styled.div`
 // 顶部栏右侧区域与刷新按钮样式
 const FlexSpacer = styled.div`
   flex: 1;
+`;
+
+// AI 服务切换开关样式
+const ProviderSwitch = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 8px;
+`;
+
+const SwitchLabel = styled.span<{ $active?: boolean }>`
+  font-size: 11px;
+  font-weight: ${({ $active }) => ($active ? 600 : 400)};
+  color: ${({ $active }) => ($active ? "#0b57d0" : "#8a9aa9")};
+  transition: all 0.2s ease;
+`;
+
+const SwitchTrack = styled.div<{ $checked?: boolean }>`
+  width: 32px;
+  height: 16px;
+  background: ${({ $checked }) => ($checked ? "#0b57d0" : "#d7dde3")};
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s ease;
+`;
+
+const SwitchThumb = styled.div<{ $checked?: boolean }>`
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ffffff;
+  position: absolute;
+  top: 2px;
+  left: ${({ $checked }) => ($checked ? "18px" : "2px")};
+  transition: left 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 `;
 
 const RefreshButton = styled.button`
@@ -574,6 +613,17 @@ const getSuggestionEmoji = (index: number): string => {
 // 构建两种提示语
 const buildShortPrompt = (q: string): string => `${q}（3句话以内）`;
 const buildLongPrompt = (q: string): string => `${q}（详细回答）`;
+const normalizePromptText = (value: string): string => value.replace(/\r\n/g, "\n");
+const mergePromptParts = (prefix: string, input: string): string => {
+  const left = normalizePromptText(prefix).replace(/\n+$/g, "");
+  const right = normalizePromptText(input).replace(/^\n+/g, "");
+  if (!left) return right;
+  if (!right) return left;
+  return `${left}\n${right}`;
+};
+const buildDoubaoPrompt = (q: string): string => mergePromptParts(doubaoCorpus, q);
+const buildDoubaoShortPrompt = (q: string): string => buildDoubaoPrompt(buildShortPrompt(q));
+const buildDoubaoLongPrompt = (q: string): string => buildDoubaoPrompt(buildLongPrompt(q));
 
 // 统一规范化错误为可打印字符串
 const getErrorMessage = (error: unknown): string => {
@@ -588,6 +638,7 @@ const getErrorMessage = (error: unknown): string => {
 
 function App() {
   const [activeTab, setActiveTab] = useState<"Chat" | "History">("Chat");
+  const [useCoze, setUseCoze] = useState<boolean>(false);
   const [question, setQuestion] = useState<string>("");
   const [answers, setAnswers] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -629,83 +680,134 @@ function App() {
       setSuggestions([]);
       hasChunkRef.current = false;
 
-      // 每条 completed 消息独立展示，不再使用占位拼接
-
       try {
-        // 第一次请求：短答（3句话以内）
-        const shortPrompt = buildShortPrompt(q);
-        const stream = await streamQuestion(shortPrompt);
-        let longStarted = false;
-        let longPromise: Promise<void> | null = null;
+        if (useCoze) {
+          // Coze 模式
+          const shortPrompt = buildShortPrompt(q);
+          const stream = await streamCozeQuestion(shortPrompt);
+          let longStarted = false;
+          let longPromise: Promise<void> | null = null;
 
-        // 超时保护：若 25s 内无片段到达，提示失败
-        const timeoutId = setTimeout(() => {
-          if (!hasChunkRef.current) {
-            setAnswers((prev) => [...prev, "Timeout: no response from bot"]);
-            setIsLoading(false);
-          }
-        }, 25000);
+          const timeoutId = setTimeout(() => {
+            if (!hasChunkRef.current) {
+              setAnswers((prev) => [...prev, "Timeout: no response from bot"]);
+              setIsLoading(false);
+            }
+          }, 25000);
 
-        // 逐步消费流事件，拼接助手的文本片段
-        for await (const evt of stream) {
-          // 调试输出，便于定位事件结构
-          // eslint-disable-next-line no-console
-          console.debug("Coze stream event:", evt);
-          const chunk = extractAssistantText(evt);
-          if (!chunk) continue;
-          const cleanedChunk = cleanRecallSuffix(chunk);
-          if (!cleanedChunk) continue;
-          hasChunkRef.current = true;
-          // 分类：推荐问题（一句话） vs 正常回答
-          if (isRecommendedQuestion(cleanedChunk)) {
-            setSuggestions((prev) => (prev.includes(cleanedChunk) ? prev : [...prev, cleanedChunk]));
-          } else {
-            // 每条 completed 消息追加一个独立的回答框
-            setAnswers((prev) => [...prev, cleanedChunk]);
-          }
+          for await (const evt of stream) {
+            console.debug("Coze stream event:", evt);
+            const chunk = extractAssistantText(evt);
+            if (!chunk) continue;
+            const cleanedChunk = cleanRecallSuffix(chunk);
+            if (!cleanedChunk) continue;
+            hasChunkRef.current = true;
+            if (isRecommendedQuestion(cleanedChunk)) {
+              setSuggestions((prev) => (prev.includes(cleanedChunk) ? prev : [...prev, cleanedChunk]));
+            } else {
+              setAnswers((prev) => [...prev, cleanedChunk]);
+            }
 
-          // 在首次短答片段显示后，触发第二次请求：详细回答（不采集推荐问题）
-          if (!longStarted) {
-            longStarted = true;
-            setIsLoadingSecond(true);
-            const longPrompt = buildLongPrompt(q);
-            longPromise = (async () => {
-              try {
-                const longStream = await streamQuestion(longPrompt);
-                for await (const evt2 of longStream) {
-                  const chunk2 = extractAssistantText(evt2);
-                  if (!chunk2) continue;
-                  hasChunkRef.current = true;
-                  // 仅追加回答，不处理推荐问题；若为一句话推荐则忽略
-                  const cleaned = cleanRecallSuffix(chunk2);
-                  if (!cleaned.trim()) continue;
-                  if (isRecommendedQuestion(cleaned)) {
-                    continue;
+            if (!longStarted) {
+              longStarted = true;
+              setIsLoadingSecond(true);
+              const longPrompt = buildLongPrompt(q);
+              longPromise = (async () => {
+                try {
+                  const longStream = await streamCozeQuestion(longPrompt);
+                  for await (const evt2 of longStream) {
+                    const chunk2 = extractAssistantText(evt2);
+                    if (!chunk2) continue;
+                    hasChunkRef.current = true;
+                    const cleaned = cleanRecallSuffix(chunk2);
+                    if (!cleaned.trim()) continue;
+                    if (isRecommendedQuestion(cleaned)) continue;
+                    setAnswers((prev) => [...prev, cleaned]);
                   }
-                  setAnswers((prev) => [...prev, cleaned]);
+                } catch (error) {
+                  const detail = getErrorMessage(error);
+                  console.error("Error calling Coze API (long):", detail);
+                  setAnswers((prev) => [...prev, "Error: Failed to get detailed answer"]);
+                } finally {
+                  setIsLoadingSecond(false);
                 }
-              } catch (error) {
-                const detail = getErrorMessage(error);
-                console.error("Error calling Coze API (long):", detail);
-                setAnswers((prev) => [...prev, "Error: Failed to get detailed answer"]);
-              } finally {
-                setIsLoadingSecond(false);
-              }
-            })();
+              })();
+            }
           }
-        }
 
-        // 短答流结束，关闭第一个回答的加载提示
-        setIsLoadingFirst(false);
+          setIsLoadingFirst(false);
+          if (longPromise) await longPromise;
+          clearTimeout(timeoutId);
+        } else {
+          // 豆包模式
+          const shortPrompt = buildDoubaoShortPrompt(q);
+          const shortStream = await streamDoubaoQuestion(shortPrompt);
+          let shortStarted = false;
+          let shortHasChunk = false;
 
-        // 等待第二次请求结束后再取消加载态
-        if (longPromise) {
-          await longPromise;
+          const shortTimeoutId = setTimeout(() => {
+            if (!shortHasChunk) {
+              setAnswers((prev) => [...prev, "Timeout: no response from bot"]);
+              setIsLoading(false);
+            }
+          }, 25000);
+
+          for await (const chunk of shortStream) {
+            if (!chunk) continue;
+            shortHasChunk = true;
+            hasChunkRef.current = true;
+            if (!shortStarted) {
+              shortStarted = true;
+              setIsLoadingFirst(false);
+              setAnswers((prev) => [...prev, chunk]);
+              continue;
+            }
+            setAnswers((prev) => {
+              if (prev.length === 0) return [chunk];
+              const next = [...prev];
+              next[next.length - 1] = `${next[next.length - 1] ?? ""}${chunk}`;
+              return next;
+            });
+          }
+          clearTimeout(shortTimeoutId);
+          setIsLoadingFirst(false);
+
+          setIsLoadingSecond(true);
+          const longPrompt = buildDoubaoLongPrompt(q);
+          const longStream = await streamDoubaoQuestion(longPrompt);
+          let longStarted = false;
+          let longHasChunk = false;
+
+          const longTimeoutId = setTimeout(() => {
+            if (!longHasChunk) {
+              setAnswers((prev) => [...prev, "Timeout: no response from bot"]);
+              setIsLoading(false);
+            }
+          }, 25000);
+
+          for await (const chunk of longStream) {
+            if (!chunk) continue;
+            longHasChunk = true;
+            hasChunkRef.current = true;
+            if (!longStarted) {
+              longStarted = true;
+              setIsLoadingSecond(false);
+              setAnswers((prev) => [...prev, chunk]);
+              continue;
+            }
+            setAnswers((prev) => {
+              if (prev.length === 0) return [chunk];
+              const next = [...prev];
+              next[next.length - 1] = `${next[next.length - 1] ?? ""}${chunk}`;
+              return next;
+            });
+          }
+          clearTimeout(longTimeoutId);
+          setIsLoadingSecond(false);
         }
-        clearTimeout(timeoutId);
       } catch (error) {
         const detail = getErrorMessage(error);
-        console.error("Error calling Coze API:", detail);
+        console.error("Error calling chat API:", detail);
         setAnswers((prev) => [...prev, "Error: Failed to get response from bot"]);
       } finally {
         setHasConfirmed(true);
@@ -794,6 +896,13 @@ function App() {
         <Tab $active={activeTab === "Chat"} onClick={() => setActiveTab("Chat")}>Chat</Tab>
         <Tab $active={activeTab === "History"} onClick={() => setActiveTab("History")}>History</Tab>
         <FlexSpacer />
+        <ProviderSwitch>
+          <SwitchLabel $active={!useCoze}>豆包</SwitchLabel>
+          <SwitchTrack $checked={useCoze} onClick={() => setUseCoze(!useCoze)}>
+            <SwitchThumb $checked={useCoze} />
+          </SwitchTrack>
+          <SwitchLabel $active={useCoze}>Coze</SwitchLabel>
+        </ProviderSwitch>
         <RefreshButton
           aria-label="刷新回答"
           title="刷新回答"
