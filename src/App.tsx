@@ -3,7 +3,6 @@ import loadingIconUrl from "./assets/loading.png";
 import type { KeyboardEvent, ChangeEvent, SyntheticEvent } from "react";
 import styled, { keyframes } from "styled-components";
 import { CopyOutlined, ReloadOutlined } from "@ant-design/icons";
-import { streamQuestion as streamCozeQuestion } from "./client_kn";
 import { streamQuestion as streamDoubaoQuestion } from "./client_doubao";
 import { buildMeetingNotice } from "./meetingNotice";
 import ReactMarkdown from "react-markdown";
@@ -89,62 +88,6 @@ const Tab = styled.button<{ $active?: boolean }>`
     height: 2px;
     background: ${({ $active }) => ($active ? "#0b57d0" : "transparent")};
     border-radius: 2px;
-  }
-`;
-
-const ProviderToggle = styled.label<{ $disabled?: boolean }>`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
-  border-radius: 999px;
-  position: relative;
-  cursor: ${({ $disabled }) => ($disabled ? "not-allowed" : "pointer")};
-  opacity: ${({ $disabled }) => ($disabled ? 0.6 : 1)};
-  user-select: none;
-`;
-
-const ToggleLabel = styled.span<{ $active?: boolean }>`
-  font-size: 12px;
-  font-weight: ${({ $active }) => ($active ? 600 : 500)};
-  color: ${({ $active }) => ($active ? "#0b57d0" : "#8a9aa9")};
-`;
-
-const ToggleInput = styled.input`
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-
-  &:checked + span {
-    background: #0b57d0;
-  }
-
-  &:checked + span::after {
-    transform: translateX(16px);
-  }
-`;
-
-const ToggleTrack = styled.span`
-  width: 34px;
-  height: 18px;
-  background: #d7dde3;
-  border-radius: 999px;
-  position: relative;
-  transition: background 0.2s ease;
-
-  &::after {
-    content: "";
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #ffffff;
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    transition: transform 0.2s ease;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   }
 `;
 
@@ -535,53 +478,10 @@ const SendIcon = styled(CopyOutlined)`
   }
 `;
 
-// 推荐问题模块样式
-const SuggestionsContainer = styled.div`
-  background: white;
-  padding: 12px 16px;
-  margin-bottom: 12px;
-  border-radius: 8px;
-  border: 1px solid #f0f0f0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
-`;
-
 const SectionTitle = styled.div`
   font-size: 14px;
   color: #666;
   margin-bottom: 8px;
-`;
-
-const SuggestionList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`;
-
-const SuggestionCard = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
-  border: 1px solid #e8eef7;
-  border-radius: 10px;
-  padding: 10px 12px;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  box-shadow: 0 2px 8px rgba(11, 87, 208, 0.06);
-
-  &:hover {
-    background: linear-gradient(180deg, #f7faff 0%, #ffffff 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(11, 87, 208, 0.12);
-  }
-`;
-
-const SuggestionText = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #1f2937;
 `;
 
 const CorpusContainer = styled.div`
@@ -687,13 +587,6 @@ const CorpusStatus = styled.div<{ $error?: boolean }>`
   color: ${({ $error }) => ($error ? "#d14343" : "#1b7a4b")};
 `;
 
-// 欢迎区与功能卡片（仿图示布局）
-
-const Emoji = styled.span`
-  font-size: 18px;
-`;
-
-
 // 历史记录样式
 const HistoryContainer = styled.div`
   background: white;
@@ -738,110 +631,6 @@ const HistoryEmpty = styled.div`
   color: #8a9aa9;
 `;
 
-// 流式输出：使用 Coze API 的 stream 接口逐步渲染回答
-// 在 handleConfirm 中驱动状态更新以实现增量显示
-// 兼容不同事件结构并增强错误可观测性
-const extractAssistantText = (event: any): string | null => {
-  // 若封装直接返回字符串（仅完成的纯文本），直接使用
-  if (typeof event === "string") {
-    return event;
-  }
-
-  // 优先解析官方流事件形态：evt.data.content
-  if (event && typeof event === "object") {
-    const content = event?.data?.content;
-    if (typeof content === "string" && content.length) {
-      // 排除明显是知识回溯/事件的 JSON 内容
-      if (content.trim().startsWith("{")) {
-        try {
-          const obj = JSON.parse(content);
-          if (obj?.msg_type === "knowledge_recall" || obj?.msg_type === "event") {
-            return null;
-          }
-          if (typeof obj?.content === "string") return obj.content;
-        } catch {
-          // 非 JSON 字符串，按原文使用
-        }
-      }
-      return content;
-    }
-  }
-
-  const msg = event?.message || event;
-  if (!msg) return null;
-
-  const role = msg.role;
-  const type = msg.content_type;
-  let raw = msg.content || "";
-
-  if (typeof raw === "string" && raw.trim().startsWith("{")) {
-    try {
-      const obj = JSON.parse(raw);
-      if (obj && typeof obj === "object") {
-        // 过滤事件完成类消息
-        if (
-          obj.msg_type === "generate_answer_finish" ||
-          obj.msg_type === "event" ||
-          obj.msg_type === "knowledge_recall"
-        ) {
-          return null;
-        }
-        // 若包含真实文本内容
-        if (obj.content && typeof obj.content === "string") {
-          raw = obj.content;
-        }
-      }
-    } catch {
-      // 非 JSON，按原文处理
-    }
-  }
-
-  if (role === "assistant" && type === "text" && raw) {
-    return raw;
-  }
-  return null;
-};
-
-// 识别是否为推荐问题：单段文本且以问号结尾
-const isRecommendedQuestion = (text: string): boolean => {
-  const t = (text || "").trim();
-  if (!t) return false;
-  const paragraphs = t.split(/\n{2,}/).filter((p) => p.trim().length > 0);
-  const endsWithQuestion = /[?？]$/.test(t);
-  return endsWithQuestion && paragraphs.length < 2;
-};
-
-// 清理知识回溯/来源标记
-// 覆盖：^^[recall slice ...]、^^(recall slice ...)、^^（recall slice ...）、以及“答案来自知识库 ^^”变体
-const cleanRecallSuffix = (text: string): string => {
-  if (!text || typeof text !== "string") return text || "";
-  let t = text;
-  // 全局移除，不仅限结尾
-  t = t.replace(/\s*\^{2}\s*\[[^\]]*recall\s*slice[^\]]*\]\s*/gi, ""); // 方括号
-  t = t.replace(/\s*\^{2}\s*\([^)]*recall\s*slice[^)]*\)\s*/gi, "");    // 英文圆括号
-  t = t.replace(/\s*\^{2}\s*（[^）]*recall\s*slice[^）]*）\s*/gi, "");     // 中文圆括号
-  // 清理来源提示语（中英文）
-  t = t.replace(/\s*答案来自知识库\s*\^{2}\s*/gi, "");
-  t = t.replace(/\s*来源于知识库\s*\^{2}\s*/gi, "");
-  t = t.replace(/\s*Answer\s*from\s*knowledge\s*base\s*\^{2}\s*/gi, "");
-  // 清理零散的 ^^ 标记
-  t = t.replace(/\s*\^{2}\s*/g, " ");
-  return t.trim();
-};
-
-// 为推荐问题提供不重复的灵动表情符号（新批次）
-const emojiPool = [
-  "🔎", "🚀", "📚", "🧪", "🎯", "💬", "🧭", "🧩", "📈", "🛠️",
-  "🌟", "🗣️", "🪄", "🖼️", "🎧", "🛰️", "🗺️", "🔬", "✏️", "📖",
-  "💡", "📝", "🧠", "🎨", "🧮", "🔧", "🔮", "🧵", "🌀", "🪙"
-];
-// 推荐问题前三项使用与 Hero 卡片一致的图标
-const heroEmojis: string[] = ["🧠", "🎨", "✍️"];
-const getSuggestionEmoji = (index: number): string => {
-  if (index >= 0 && index < heroEmojis.length) return heroEmojis[index];
-  return emojiPool[index] ?? "🪄";
-};
-
 // 构建两种提示语
 const buildShortPrompt = (q: string): string => `${q}（3句话以内）`;
 const buildLongPrompt = (q: string): string => `${q}（详细回答）`;
@@ -879,10 +668,8 @@ type MeetingFormState = {
 
 function App() {
   const [activeTab, setActiveTab] = useState<"Chat" | "Meeting" | "History">("Chat");
-  const [useCoze, setUseCoze] = useState<boolean>(false);
   const [question, setQuestion] = useState<string>("");
   const [answers, setAnswers] = useState<string[]>([]);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [doubaoEntry, setDoubaoEntry] = useState<{ question: string; answer: string }>({
     question: "",
     answer: "",
@@ -898,7 +685,6 @@ function App() {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const chatSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const meetingBuildTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hasChunkRef = useRef<boolean>(false);
   const [meetingForm, setMeetingForm] = useState<MeetingFormState>({
     link1: "",
     id1: "",
@@ -924,24 +710,6 @@ function App() {
     adjustTextareaHeight(textareaRef.current);
   }, [question]);
 
-  const requestCozeSuggestions = async (prompt: string): Promise<void> => {
-    try {
-      const stream = await streamCozeQuestion(prompt);
-      for await (const evt of stream) {
-        const chunk = extractAssistantText(evt);
-        if (!chunk) continue;
-        const cleaned = cleanRecallSuffix(chunk);
-        if (!cleaned) continue;
-        if (isRecommendedQuestion(cleaned)) {
-          setSuggestions((prev) => (prev.includes(cleaned) ? prev : [...prev, cleaned]));
-        }
-      }
-    } catch (error) {
-      const detail = getErrorMessage(error);
-      console.warn("Failed to fetch Coze suggestions:", detail);
-    }
-  };
-
   const handleConfirm = async (): Promise<void> => {
     if (question.trim() && !isLoading) {
       // 发送前把问题缓存到历史（去重，最多10条）
@@ -957,151 +725,73 @@ function App() {
       setIsLoadingSecond(false);
       // 新问题开始时清空旧内容
       setAnswers([]);
-      setSuggestions([]);
-      hasChunkRef.current = false;
 
       // 每条 completed 消息独立展示，不再使用占位拼接
 
       try {
-        if (useCoze) {
-          // 第一次请求：短答（3句话以内）
-          const shortPrompt = buildShortPrompt(q);
-          const stream = await streamCozeQuestion(shortPrompt);
-          let longStarted = false;
-          let longPromise: Promise<void> | null = null;
+        const shortPrompt = buildDoubaoShortPrompt(q);
+        const shortStream = await streamDoubaoQuestion(shortPrompt);
+        let shortStarted = false;
+        let shortHasChunk = false;
 
-          // 超时保护：若 25s 内无片段到达，提示失败
-          const timeoutId = setTimeout(() => {
-            if (!hasChunkRef.current) {
-              setAnswers((prev) => [...prev, "Timeout: no response from bot"]);
-              setIsLoading(false);
-            }
-          }, 25000);
-
-          // 逐步消费流事件，拼接助手的文本片段
-          for await (const evt of stream) {
-            // 调试输出，便于定位事件结构
-            // eslint-disable-next-line no-console
-            console.debug("Coze stream event:", evt);
-            const chunk = extractAssistantText(evt);
-            if (!chunk) continue;
-            const cleanedChunk = cleanRecallSuffix(chunk);
-            if (!cleanedChunk) continue;
-            hasChunkRef.current = true;
-            // 分类：推荐问题（一句话） vs 正常回答
-            if (isRecommendedQuestion(cleanedChunk)) {
-              setSuggestions((prev) => (prev.includes(cleanedChunk) ? prev : [...prev, cleanedChunk]));
-            } else {
-              // 每条 completed 消息追加一个独立的回答框
-              setAnswers((prev) => [...prev, cleanedChunk]);
-            }
-
-            // 在首次短答片段显示后，触发第二次请求：详细回答（不采集推荐问题）
-            if (!longStarted) {
-              longStarted = true;
-              setIsLoadingSecond(true);
-              const longPrompt = buildLongPrompt(q);
-              longPromise = (async () => {
-                try {
-                  const longStream = await streamCozeQuestion(longPrompt);
-                  for await (const evt2 of longStream) {
-                    const chunk2 = extractAssistantText(evt2);
-                    if (!chunk2) continue;
-                    hasChunkRef.current = true;
-                    // 仅追加回答，不处理推荐问题；若为一句话推荐则忽略
-                    const cleaned = cleanRecallSuffix(chunk2);
-                    if (!cleaned.trim()) continue;
-                    if (isRecommendedQuestion(cleaned)) {
-                      continue;
-                    }
-                    setAnswers((prev) => [...prev, cleaned]);
-                  }
-                } catch (error) {
-                  const detail = getErrorMessage(error);
-                  console.error("Error calling Coze API (long):", detail);
-                  setAnswers((prev) => [...prev, "Error: Failed to get detailed answer"]);
-                } finally {
-                  setIsLoadingSecond(false);
-                }
-              })();
-            }
+        // 超时保护：若 25s 内无片段到达，提示失败
+        const shortTimeoutId = setTimeout(() => {
+          if (!shortHasChunk) {
+            setAnswers((prev) => [...prev, "Timeout: no response from bot"]);
+            setIsLoading(false);
           }
+        }, 25000);
 
-          // 短答流结束，关闭第一个回答的加载提示
-          setIsLoadingFirst(false);
-
-          // 等待第二次请求结束后再取消加载态
-          if (longPromise) {
-            await longPromise;
+        for await (const chunk of shortStream) {
+          if (!chunk) continue;
+          shortHasChunk = true;
+          if (!shortStarted) {
+            shortStarted = true;
+            setIsLoadingFirst(false);
+            setAnswers((prev) => [...prev, chunk]);
+            continue;
           }
-          clearTimeout(timeoutId);
-        } else {
-          const shortPrompt = buildDoubaoShortPrompt(q);
-          const shortStream = await streamDoubaoQuestion(shortPrompt);
-          let shortStarted = false;
-          let shortHasChunk = false;
-
-          // 超时保护：若 25s 内无片段到达，提示失败
-          const shortTimeoutId = setTimeout(() => {
-            if (!shortHasChunk) {
-              setAnswers((prev) => [...prev, "Timeout: no response from bot"]);
-              setIsLoading(false);
-            }
-          }, 25000);
-
-          for await (const chunk of shortStream) {
-            if (!chunk) continue;
-            shortHasChunk = true;
-            hasChunkRef.current = true;
-            if (!shortStarted) {
-              shortStarted = true;
-              setIsLoadingFirst(false);
-              setAnswers((prev) => [...prev, chunk]);
-              continue;
-            }
-            setAnswers((prev) => {
-              if (prev.length === 0) return [chunk];
-              const next = [...prev];
-              next[next.length - 1] = `${next[next.length - 1] ?? ""}${chunk}`;
-              return next;
-            });
-          }
-          clearTimeout(shortTimeoutId);
-          setIsLoadingFirst(false);
-
-          setIsLoadingSecond(true);
-          const longPrompt = buildDoubaoLongPrompt(q);
-          const longStream = await streamDoubaoQuestion(longPrompt);
-          let longStarted = false;
-          let longHasChunk = false;
-
-          const longTimeoutId = setTimeout(() => {
-            if (!longHasChunk) {
-              setAnswers((prev) => [...prev, "Timeout: no response from bot"]);
-              setIsLoading(false);
-            }
-          }, 25000);
-
-          for await (const chunk of longStream) {
-            if (!chunk) continue;
-            longHasChunk = true;
-            hasChunkRef.current = true;
-            if (!longStarted) {
-              longStarted = true;
-              setIsLoadingSecond(false);
-              setAnswers((prev) => [...prev, chunk]);
-              continue;
-            }
-            setAnswers((prev) => {
-              if (prev.length === 0) return [chunk];
-              const next = [...prev];
-              next[next.length - 1] = `${next[next.length - 1] ?? ""}${chunk}`;
-              return next;
-            });
-          }
-          clearTimeout(longTimeoutId);
-          setIsLoadingSecond(false);
+          setAnswers((prev) => {
+            if (prev.length === 0) return [chunk];
+            const next = [...prev];
+            next[next.length - 1] = `${next[next.length - 1] ?? ""}${chunk}`;
+            return next;
+          });
         }
+        clearTimeout(shortTimeoutId);
+        setIsLoadingFirst(false);
+
+        setIsLoadingSecond(true);
+        const longPrompt = buildDoubaoLongPrompt(q);
+        const longStream = await streamDoubaoQuestion(longPrompt);
+        let longStarted = false;
+        let longHasChunk = false;
+
+        const longTimeoutId = setTimeout(() => {
+          if (!longHasChunk) {
+            setAnswers((prev) => [...prev, "Timeout: no response from bot"]);
+            setIsLoading(false);
+          }
+        }, 25000);
+
+        for await (const chunk of longStream) {
+          if (!chunk) continue;
+          longHasChunk = true;
+          if (!longStarted) {
+            longStarted = true;
+            setIsLoadingSecond(false);
+            setAnswers((prev) => [...prev, chunk]);
+            continue;
+          }
+          setAnswers((prev) => {
+            if (prev.length === 0) return [chunk];
+            const next = [...prev];
+            next[next.length - 1] = `${next[next.length - 1] ?? ""}${chunk}`;
+            return next;
+          });
+        }
+        clearTimeout(longTimeoutId);
+        setIsLoadingSecond(false);
       } catch (error) {
         const detail = getErrorMessage(error);
         console.error("Error calling chat API:", detail);
@@ -1365,20 +1055,6 @@ function App() {
         <Tab $active={activeTab === "Meeting"} onClick={() => setActiveTab("Meeting")}>Meeting</Tab>
         <Tab $active={activeTab === "History"} onClick={() => setActiveTab("History")}>History</Tab>
         <FlexSpacer />
-        {activeTab === "Chat" && (
-          <ProviderToggle $disabled={isLoading} title="切换 Coze 或豆包">
-            <ToggleLabel $active={!useCoze}>豆包</ToggleLabel>
-            <ToggleInput
-              type="checkbox"
-              checked={useCoze}
-              onChange={() => setUseCoze((prev) => !prev)}
-              disabled={isLoading}
-              aria-label="切换 Coze 智能体"
-            />
-            <ToggleTrack />
-            <ToggleLabel $active={useCoze}>Coze</ToggleLabel>
-          </ProviderToggle>
-        )}
         <RefreshButton
           aria-label="刷新回答"
           title="刷新回答"
@@ -1594,77 +1270,44 @@ function App() {
               </Fragment>
             ))}
 
-            {useCoze && suggestions.length > 0 && (
-              <SuggestionsContainer>
-                <SectionTitle>推荐问题</SectionTitle>
-                <SuggestionList>
-                  {suggestions.map((s, i) => (
-                    <SuggestionCard
-                      key={i}
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => {
-                        setQuestion(s);
-                        focusHeroInput(e as any);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          setQuestion(s);
-                          focusHeroInput(e as any);
-                        }
-                      }}
-                    >
-                      <SuggestionText>
-                        <Emoji>{getSuggestionEmoji(i)}</Emoji>
-                        <span>{s}</span>
-                      </SuggestionText>
-                    </SuggestionCard>
-                  ))}
-                </SuggestionList>
-              </SuggestionsContainer>
-            )}
-
           </AnswersContainer>
 
-          {!useCoze && (
-            <CorpusContainer>
-              <SectionTitle>追加语料</SectionTitle>
-              <CorpusFields>
-                <CorpusField>
-                  <CorpusLabel>问题行</CorpusLabel>
-                  <CorpusInput
-                    value={doubaoEntry.question}
-                    onChange={handleDoubaoEntryChange("question")}
-                    placeholder="例如：训练营可以退款吗？"
-                  />
-                </CorpusField>
-                <CorpusField>
-                  <CorpusLabel>答：行</CorpusLabel>
-                  <CorpusTextarea
-                    value={doubaoEntry.answer}
-                    onChange={handleDoubaoEntryChange("answer")}
-                    placeholder="例如：本训练营为线上直播形式，服务开启后不支持退费。"
-                  />
-                </CorpusField>
-              </CorpusFields>
-              <CorpusActions>
-                <CorpusHint>将按序号追加到 doubao-corpus.md</CorpusHint>
-                <CorpusButton
-                  type="button"
-                  onClick={handleDoubaoEntrySubmit}
-                  disabled={doubaoSaving || !canSubmitDoubaoEntry}
-                >
-                  {doubaoSaving ? "写入中..." : "写入语料"}
-                </CorpusButton>
-              </CorpusActions>
-              {(doubaoError || doubaoStatus) && (
-                <CorpusStatus $error={!!doubaoError}>
-                  {doubaoError || doubaoStatus}
-                </CorpusStatus>
-              )}
-            </CorpusContainer>
-          )}
+          <CorpusContainer>
+            <SectionTitle>追加语料</SectionTitle>
+            <CorpusFields>
+              <CorpusField>
+                <CorpusLabel>问题行</CorpusLabel>
+                <CorpusInput
+                  value={doubaoEntry.question}
+                  onChange={handleDoubaoEntryChange("question")}
+                  placeholder="例如：训练营可以退款吗？"
+                />
+              </CorpusField>
+              <CorpusField>
+                <CorpusLabel>答：行</CorpusLabel>
+                <CorpusTextarea
+                  value={doubaoEntry.answer}
+                  onChange={handleDoubaoEntryChange("answer")}
+                  placeholder="例如：本训练营为线上直播形式，服务开启后不支持退费。"
+                />
+              </CorpusField>
+            </CorpusFields>
+            <CorpusActions>
+              <CorpusHint>将按序号追加到 doubao-corpus.md</CorpusHint>
+              <CorpusButton
+                type="button"
+                onClick={handleDoubaoEntrySubmit}
+                disabled={doubaoSaving || !canSubmitDoubaoEntry}
+              >
+                {doubaoSaving ? "写入中..." : "写入语料"}
+              </CorpusButton>
+            </CorpusActions>
+            {(doubaoError || doubaoStatus) && (
+              <CorpusStatus $error={!!doubaoError}>
+                {doubaoError || doubaoStatus}
+              </CorpusStatus>
+            )}
+          </CorpusContainer>
 
           {/* 输入框固定在底部，顶部内容可单独滚动 */}
           <InputContainer id="hero-input">
