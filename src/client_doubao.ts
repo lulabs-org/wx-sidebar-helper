@@ -18,9 +18,9 @@ export type ArkChatOptions = {
 const DEFAULT_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3';
 const DEFAULT_MODEL = 'doubao-lite-4k';
 
-const ENV_API_KEY = import.meta.env.ARK_API_KEY;
-const ENV_BASE_URL = import.meta.env.ARK_BASE_URL;
-const ENV_MODEL = import.meta.env.DOUBAO_MODEL || import.meta.env.ARK_MODEL;
+const ENV_API_KEY = import.meta.env.VITE_ARK_API_KEY;
+const ENV_BASE_URL = import.meta.env.VITE_ARK_BASE_URL;
+const ENV_MODEL = import.meta.env.VITE_DOUBAO_MODEL || import.meta.env.VITE_ARK_MODEL;
 
 function resolveConfig(options: ArkChatOptions) {
   const apiKey = options.apiKey || ENV_API_KEY;
