@@ -946,7 +946,6 @@ function App() {
   const [isLoadingFirst, setIsLoadingFirst] = useState<boolean>(false);
   const [isLoadingSecond, setIsLoadingSecond] = useState<boolean>(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const chatSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const meetingBuildTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [meetingForm, setMeetingForm] = useState<MeetingFormState>({
     link1: "",
@@ -1035,7 +1034,6 @@ function App() {
   const handleConfirm = async (): Promise<void> => {
     if (question.trim() && !isLoading) {
       const q = question.trim();
-      queueChatSave(question);
       setQuestion("");
       setIsLoading(true);
       setIsLoadingFirst(true);
@@ -1163,32 +1161,6 @@ function App() {
   const handleInput = (e: ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setQuestion(value);
-    queueChatSave(value);
-  };
-
-  const saveChatInput = async (text: string): Promise<void> => {
-    if (!text.trim()) return;
-    try {
-      await fetch("/api/chat-save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-        keepalive: true,
-      });
-    } catch (error) {
-      console.warn("Failed to save chat input:", error);
-    }
-  };
-
-  const queueChatSave = (text: string): void => {
-    if (!text.trim()) return;
-    if (chatSaveTimerRef.current) {
-      clearTimeout(chatSaveTimerRef.current);
-    }
-    chatSaveTimerRef.current = setTimeout(() => {
-      chatSaveTimerRef.current = null;
-      void saveChatInput(text);
-    }, 400);
   };
 
   const canSubmitDoubaoEntry =

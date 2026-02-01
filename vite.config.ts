@@ -1,7 +1,6 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin, type ViteDevServer } from 'vite'
 
-import { saveChatInput } from './server/saveChatInput'
 import { appendDoubaoCorpusEntry } from './server/saveDoubaoCorpus'
 import { saveMeetingInput } from './server/saveMeetingInput'
 
@@ -69,70 +68,6 @@ const localApiMiddleware: Plugin = {
             res.statusCode = 500;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ error: 'Failed to save meeting input' }));
-          });
-      });
-    });
-
-    server.middlewares.use('/api/chat-save', (req, res, _next) => {
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-      if (req.method === 'OPTIONS') {
-        res.statusCode = 204;
-        res.end();
-        return;
-      }
-
-      if (req.method !== 'POST') {
-        res.statusCode = 405;
-        res.end('Method Not Allowed');
-        return;
-      }
-
-      const ctHeader = req.headers['content-type'];
-      const contentType = Array.isArray(ctHeader) ? ctHeader[0] : (ctHeader ?? '');
-      let data = '';
-      req.on('data', (chunk: Buffer | string) => {
-        data += typeof chunk === 'string' ? chunk : chunk.toString();
-      });
-      req.on('end', () => {
-        let text: string | null = null;
-        try {
-          if (String(contentType).includes('application/json')) {
-            const body = JSON.parse(data || '{}');
-            text = typeof (body as any)?.text === 'string' ? (body as any).text : null;
-          } else {
-            text = typeof data === 'string' ? data : '';
-          }
-        } catch (error) {
-          // eslint-disable-next-line no-console
-          console.error('Failed to parse chat input body:', error);
-          res.statusCode = 400;
-          res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ error: 'Invalid request body' }));
-          return;
-        }
-
-        if (text === null) {
-          res.statusCode = 400;
-          res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ error: 'Text must be a string' }));
-          return;
-        }
-
-        saveChatInput(text)
-          .then((result) => {
-            res.statusCode = 200;
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ ok: true, file: result.fileName, path: result.relativePath }));
-          })
-          .catch((error) => {
-            // eslint-disable-next-line no-console
-            console.error('Failed to save chat input:', error);
-            res.statusCode = 500;
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ error: 'Failed to save chat input' }));
           });
       });
     });
