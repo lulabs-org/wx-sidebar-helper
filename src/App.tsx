@@ -895,6 +895,7 @@ function App() {
   const [doubaoSaving, setDoubaoSaving] = useState<boolean>(false);
   const [doubaoStatus, setDoubaoStatus] = useState<string>("");
   const [doubaoError, setDoubaoError] = useState<string>("");
+  const [isViewingHistory, setIsViewingHistory] = useState<boolean>(false);
   
   // 使用 IndexedDB Hook 管理历史记录
   const { 
@@ -1000,10 +1001,9 @@ function App() {
       setQuestion(item.question);
       setAnswers(item.answers);
       setActiveTab("Chat");
-      // 使用 setTimeout 确保标签页切换完成后再聚焦
-      setTimeout(() => {
-        focusHeroInput();
-      }, 100);
+      // 清空输入框，只显示历史问题和回答
+      setQuestion("");
+      setIsViewingHistory(true);
     }
   };
 
@@ -1017,6 +1017,7 @@ function App() {
       setIsLoadingSecond(false);
       // 新问题开始时清空旧内容
       setAnswers([]);
+      setIsViewingHistory(false); // 开始新对话时退出历史查看模式
 
       // 用于收集所有回答
       const collectedAnswers: string[] = [];
@@ -1305,6 +1306,7 @@ function App() {
   // 清空回答（刷新）
   const handleRefresh = (): void => {
     setAnswers([]);
+    setIsViewingHistory(false);
   };
 
   const focusHeroInput = (e?: SyntheticEvent): void => {
@@ -1671,73 +1673,112 @@ function App() {
 
           </AnswersContainer>
 
-          <CorpusContainer>
-            <SectionTitle>追加语料</SectionTitle>
-            <CorpusFields>
-              <CorpusField>
-                <CorpusLabel>问题行</CorpusLabel>
-                <CorpusInput
-                  value={doubaoEntry.question}
-                  onChange={handleDoubaoEntryChange("question")}
-                  placeholder="例如：训练营可以退款吗？"
-                />
-              </CorpusField>
-              <CorpusField>
-                <CorpusLabel>答：行</CorpusLabel>
-                <CorpusTextarea
-                  value={doubaoEntry.answer}
-                  onChange={handleDoubaoEntryChange("answer")}
-                  placeholder="例如：本训练营为线上直播形式，服务开启后不支持退费。"
-                />
-              </CorpusField>
-            </CorpusFields>
-            <CorpusActions>
-              <CorpusHint>将按序号追加到 doubao-corpus.md</CorpusHint>
-              <CorpusButton
-                type="button"
-                onClick={handleDoubaoEntrySubmit}
-                disabled={doubaoSaving || !canSubmitDoubaoEntry}
-              >
-                {doubaoSaving ? "写入中..." : "写入语料"}
-              </CorpusButton>
-            </CorpusActions>
-            {(doubaoError || doubaoStatus) && (
-              <CorpusStatus $error={!!doubaoError}>
-                {doubaoError || doubaoStatus}
-              </CorpusStatus>
-            )}
-          </CorpusContainer>
-
-          {/* 输入框固定在底部，顶部内容可单独滚动 */}
-          <InputContainer id="hero-input">
-            <QuestionInput
-              ref={textareaRef}
-              placeholder="Ask complex questions (Enter to send)"
-              value={question}
-              onChange={handleInput}
-              onKeyDown={handleKeyPress}
-              rows={1}
-            />
-            <SendLink
-              href="#hero-input"
-              aria-label="send"
-              title="Send"
-              role="button"
-              tabIndex={0}
-              onClick={(e) => {
-                e.preventDefault();
-                handleConfirm();
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
+          {isViewingHistory && (
+            <InputContainer id="hero-input">
+              <SendLink
+                href="#hero-input"
+                aria-label="返回新对话"
+                title="返回新对话"
+                role="button"
+                tabIndex={0}
+                onClick={(e) => {
                   e.preventDefault();
-                  handleConfirm();
-                }
-              }}
-            >
-              Send
-            </SendLink>
-          </InputContainer>
+                  setIsViewingHistory(false);
+                  setAnswers([]);
+                  setQuestion("");
+                  setTimeout(() => {
+                    focusHeroInput();
+                  }, 100);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setIsViewingHistory(false);
+                    setAnswers([]);
+                    setQuestion("");
+                    setTimeout(() => {
+                      focusHeroInput();
+                    }, 100);
+                  }
+                }}
+                style={{ margin: "0 auto", display: "block", textAlign: "center", width: "100%" }}
+              >
+                返回新对话
+              </SendLink>
+            </InputContainer>
+          )}
+
+          {!isViewingHistory && (
+            <>
+              <CorpusContainer>
+                <SectionTitle>追加语料</SectionTitle>
+                <CorpusFields>
+                  <CorpusField>
+                    <CorpusLabel>问题行</CorpusLabel>
+                    <CorpusInput
+                      value={doubaoEntry.question}
+                      onChange={handleDoubaoEntryChange("question")}
+                      placeholder="例如：训练营可以退款吗？"
+                    />
+                  </CorpusField>
+                  <CorpusField>
+                    <CorpusLabel>答：行</CorpusLabel>
+                    <CorpusTextarea
+                      value={doubaoEntry.answer}
+                      onChange={handleDoubaoEntryChange("answer")}
+                      placeholder="例如：本训练营为线上直播形式，服务开启后不支持退费。"
+                    />
+                  </CorpusField>
+                </CorpusFields>
+                <CorpusActions>
+                  <CorpusHint>将按序号追加到 doubao-corpus.md</CorpusHint>
+                  <CorpusButton
+                    type="button"
+                    onClick={handleDoubaoEntrySubmit}
+                    disabled={doubaoSaving || !canSubmitDoubaoEntry}
+                  >
+                    {doubaoSaving ? "写入中..." : "写入语料"}
+                  </CorpusButton>
+                </CorpusActions>
+                {(doubaoError || doubaoStatus) && (
+                  <CorpusStatus $error={!!doubaoError}>
+                    {doubaoError || doubaoStatus}
+                  </CorpusStatus>
+                )}
+              </CorpusContainer>
+
+              {/* 输入框固定在底部，顶部内容可单独滚动 */}
+              <InputContainer id="hero-input">
+                <QuestionInput
+                  ref={textareaRef}
+                  placeholder="Ask complex questions (Enter to send)"
+                  value={question}
+                  onChange={handleInput}
+                  onKeyDown={handleKeyPress}
+                  rows={1}
+                />
+                <SendLink
+                  href="#hero-input"
+                  aria-label="send"
+                  title="Send"
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleConfirm();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleConfirm();
+                    }
+                  }}
+                >
+                  Send
+                </SendLink>
+              </InputContainer>
+            </>
+          )}
         </>
       )}
     </Container>
