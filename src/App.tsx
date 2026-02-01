@@ -305,6 +305,33 @@ const AnswersContainer = styled.div`
   }
 `;
 
+const QuestionDisplay = styled.div`
+  background: linear-gradient(180deg, #f0f7ff 0%, #ffffff 100%);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  border: 1px solid #e8eef7;
+  border-left: 3px solid #1890ff;
+  box-shadow: 0 2px 10px rgba(24, 144, 255, 0.08);
+  
+  strong {
+    color: #0b57d0;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: block;
+    margin-bottom: 8px;
+  }
+  
+  .question-text {
+    color: #1f2937;
+    font-size: 14px;
+    line-height: 1.6;
+    font-weight: 500;
+  }
+`;
+
 const AnswerItem = styled.div`
   background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
   padding: 14px 16px;
@@ -998,11 +1025,9 @@ function App() {
     }
     const item = history.find((h) => h.id === id);
     if (item) {
-      setQuestion(item.question);
       setAnswers(item.answers);
       setActiveTab("Chat");
-      // 清空输入框，只显示历史问题和回答
-      setQuestion("");
+      setQuestion(item.question); // 保留问题以便显示
       setIsViewingHistory(true);
     }
   };
@@ -1102,8 +1127,12 @@ function App() {
         }
 
         // 保存到 IndexedDB
+        console.log('准备保存历史记录:', { question: q, answersCount: collectedAnswers.length });
         if (collectedAnswers.length > 0) {
-          await addHistoryItem(q, collectedAnswers);
+          const savedId = await addHistoryItem(q, collectedAnswers);
+          console.log('历史记录已保存，ID:', savedId);
+        } else {
+          console.warn('没有回答内容，跳过保存');
         }
       } catch (error) {
         const detail = getErrorMessage(error);
@@ -1112,7 +1141,9 @@ function App() {
         setAnswers((prev) => [...prev, errorMsg]);
         collectedAnswers.push(errorMsg);
         // 即使出错也保存到历史记录
-        await addHistoryItem(q, collectedAnswers);
+        console.log('出错后保存历史记录:', { question: q, answersCount: collectedAnswers.length });
+        const savedId = await addHistoryItem(q, collectedAnswers);
+        console.log('错误情况下历史记录已保存，ID:', savedId);
       } finally {
         setHasConfirmed(true);
         setIsLoading(false);
@@ -1626,6 +1657,14 @@ function App() {
           {/* 欢迎区与卡片已移除，下面直接展示回答与输入区域 */}
 
           <AnswersContainer>
+            {/* 显示历史问题 */}
+            {isViewingHistory && question && (
+              <QuestionDisplay>
+                <strong>问题</strong>
+                <div className="question-text">{question}</div>
+              </QuestionDisplay>
+            )}
+            
             {/* 第一个回答加载提示：在尚未产生任何回答时显示在顶部 */}
             {isLoadingFirst && answers.length === 0 && (
               <LoadingNotice>

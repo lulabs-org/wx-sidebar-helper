@@ -33,6 +33,7 @@ export function useChatHistory() {
 
   // 添加新的对话记录
   const addHistoryItem = async (question: string, answers: string[]) => {
+    console.log('addHistoryItem 被调用:', { question, answersCount: answers.length });
     try {
       const newItem: ChatHistoryItem = {
         id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -41,15 +42,22 @@ export function useChatHistory() {
         timestamp: Date.now(),
       };
 
+      console.log('准备添加到 IndexedDB:', newItem);
       await indexedDBManager.addItem(newItem);
+      console.log('IndexedDB 添加成功');
       
       // 更新本地状态
-      setHistory((prev) => [newItem, ...prev]);
+      setHistory((prev) => {
+        console.log('更新本地历史状态，当前数量:', prev.length);
+        return [newItem, ...prev];
+      });
 
       // 检查是否超过最大数量，如果超过则删除最旧的记录
       const count = await indexedDBManager.getCount();
+      console.log('当前历史记录总数:', count);
       if (count > MAX_HISTORY_ITEMS) {
         const toDelete = count - MAX_HISTORY_ITEMS;
+        console.log('超过最大数量，删除最旧的', toDelete, '条记录');
         await indexedDBManager.deleteOldestItems(toDelete);
         // 重新加载以更新状态
         await loadHistory();
