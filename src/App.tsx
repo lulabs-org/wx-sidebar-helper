@@ -1,14 +1,14 @@
-import { useState, useRef, useEffect, Fragment } from "react";
-import loadingIconUrl from "./assets/loading.png";
-import type { KeyboardEvent, ChangeEvent, SyntheticEvent } from "react";
-import styled, { keyframes } from "styled-components";
-import { CopyOutlined, ReloadOutlined } from "@ant-design/icons";
-import { streamQuestion as streamDoubaoQuestion } from "./client_doubao";
-import { buildMeetingNotice } from "./meetingNotice";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import remarkBreaks from "remark-breaks";
-import doubaoCorpus from "./assets/resources/doubao-corpus.md?raw";
+import { useState, useRef, useEffect, Fragment } from 'react'
+import loadingIconUrl from './assets/loading.png'
+import type { KeyboardEvent, ChangeEvent, SyntheticEvent } from 'react'
+import styled, { keyframes } from 'styled-components'
+import { CopyOutlined, ReloadOutlined } from '@ant-design/icons'
+import { streamQuestion as streamDoubaoQuestion } from './client_doubao'
+import { buildMeetingNotice } from './meetingNotice'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import remarkBreaks from 'remark-breaks'
+import doubaoCorpus from './assets/resources/doubao-corpus.md?raw'
 
 // 样式组件
 const Container = styled.div`
@@ -19,13 +19,12 @@ const Container = styled.div`
   overflow: hidden;
   background: #ffffff;
   border-radius: 14px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   border: 1px solid #eef2f6;
   display: flex;
   flex-direction: column;
-`;
+`
 
 // 顶部标签栏（仿 Bing：Chat / Meeting / History）
 const TopBar = styled.div`
@@ -36,12 +35,12 @@ const TopBar = styled.div`
   padding: 4px 8px 10px;
   border-bottom: 1px solid #eef2f6;
   margin-bottom: 10px;
-`;
+`
 
 // 顶部栏右侧区域与刷新按钮样式
 const FlexSpacer = styled.div`
   flex: 1;
-`;
+`
 
 const RefreshButton = styled.button`
   border: none;
@@ -58,17 +57,17 @@ const RefreshButton = styled.button`
     background: #f4f7fb;
     color: #5b6b7a;
   }
-`;
+`
 
 const RefreshIcon = styled(ReloadOutlined)`
   font-size: 18px;
-`;
+`
 
 const Tab = styled.button<{ $active?: boolean }>`
   border: none;
   background: transparent;
   font-size: 13px;
-  color: ${({ $active }) => ($active ? "#0b57d0" : "#5b6b7a")};
+  color: ${({ $active }) => ($active ? '#0b57d0' : '#5b6b7a')};
   font-weight: ${({ $active }) => ($active ? 600 : 500)};
   padding: 7px 8px;
   border-radius: 6px;
@@ -80,16 +79,16 @@ const Tab = styled.button<{ $active?: boolean }>`
   }
 
   &::after {
-    content: "";
+    content: '';
     position: absolute;
     left: 10px;
     right: 10px;
     bottom: 0;
     height: 2px;
-    background: ${({ $active }) => ($active ? "#0b57d0" : "transparent")};
+    background: ${({ $active }) => ($active ? '#0b57d0' : 'transparent')};
     border-radius: 2px;
   }
-`;
+`
 
 const InputContainer = styled.div`
   display: flex;
@@ -102,7 +101,7 @@ const InputContainer = styled.div`
   bottom: 0;
   z-index: 2;
   background: #ffffff;
-`;
+`
 
 const QuestionInput = styled.textarea`
   flex: 1;
@@ -152,7 +151,7 @@ const QuestionInput = styled.textarea`
     border-color: #1890ff;
     box-shadow: 0 2px 8px rgba(24, 144, 255, 0.1);
   }
-`;
+`
 
 const MeetingForm = styled.div`
   display: grid;
@@ -179,14 +178,14 @@ const MeetingForm = styled.div`
   &::-webkit-scrollbar-thumb:hover {
     background: #999;
   }
-`;
+`
 
 const MeetingField = styled.label`
   display: grid;
   gap: 6px;
   font-size: 12px;
   color: #6b7280;
-`;
+`
 
 const MeetingInput = styled.input`
   width: 100%;
@@ -206,7 +205,7 @@ const MeetingInput = styled.input`
     border-color: #1890ff;
     box-shadow: 0 2px 8px rgba(24, 144, 255, 0.1);
   }
-`;
+`
 
 const MeetingPaste = styled.textarea`
   width: 100%;
@@ -227,13 +226,13 @@ const MeetingPaste = styled.textarea`
     box-shadow: 0 2px 8px rgba(24, 144, 255, 0.08);
     background: #ffffff;
   }
-`;
+`
 
 const MeetingHint = styled.div`
   font-size: 12px;
   color: #8a9aa9;
   margin-top: 2px;
-`;
+`
 
 const MeetingGroup = styled.div`
   border: 1px solid #eef2f6;
@@ -242,26 +241,26 @@ const MeetingGroup = styled.div`
   background: #fbfdff;
   display: grid;
   gap: 8px;
-`;
+`
 
 const MeetingGroupTitle = styled.div`
   font-size: 12px;
   font-weight: 600;
   color: #3b4a59;
-`;
+`
 
 const MeetingRow = styled.div`
   display: grid;
   grid-template-columns: 1.2fr 0.8fr;
   gap: 8px;
-`;
+`
 
 const MeetingActions = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding-top: 4px;
-`;
+`
 
 // 与 Hero 区右侧链接（Try it）一致的样式，用于发送
 const SendLink = styled.a`
@@ -271,11 +270,12 @@ const SendLink = styled.a`
   align-self: center;
   white-space: nowrap;
 
-  &:hover { text-decoration: underline; }
-`;
+  &:hover {
+    text-decoration: underline;
+  }
+`
 
 /* 删除 EnterOverlay 内嵌提示样式 */
-
 
 const AnswersContainer = styled.div`
   max-height: calc(100vh - 120px);
@@ -302,7 +302,7 @@ const AnswersContainer = styled.div`
   &::-webkit-scrollbar-thumb:hover {
     background: #999;
   }
-`;
+`
 
 const AnswerItem = styled.div`
   background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
@@ -316,7 +316,7 @@ const AnswerItem = styled.div`
   cursor: pointer;
   transition: all 0.25s ease;
   box-shadow: 0 2px 10px rgba(245, 196, 83, 0.05);
-  border-left: 3px solid #F4D06F; /* 柔和金黄 */
+  border-left: 3px solid #f4d06f; /* 柔和金黄 */
 
   &:hover {
     border-color: #fde68a; /* 浅金黄边框 */
@@ -335,29 +335,48 @@ const AnswerItem = styled.div`
     word-break: break-word;
     white-space: normal;
 
-    h1, h2, h3 {
+    h1,
+    h2,
+    h3 {
       color: #0f172a;
       font-weight: 600;
       margin: 8px 0 6px;
       line-height: 1.3;
     }
-    h1 { font-size: 16px; }
-    h2 { font-size: 15px; }
-    h3 { font-size: 14px; }
+    h1 {
+      font-size: 16px;
+    }
+    h2 {
+      font-size: 15px;
+    }
+    h3 {
+      font-size: 14px;
+    }
 
-    p { margin: 6px 0; }
+    p {
+      margin: 6px 0;
+    }
 
-    ul, ol { margin: 6px 0 6px 18px; }
-    li { margin: 4px 0; }
+    ul,
+    ol {
+      margin: 6px 0 6px 18px;
+    }
+    li {
+      margin: 4px 0;
+    }
 
     a {
       color: #0b57d0;
       text-decoration: none;
     }
-    a:hover { text-decoration: underline; }
+    a:hover {
+      text-decoration: underline;
+    }
 
     code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-family:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+        monospace;
       background: #f3f5f7;
       border: 1px solid #e6e8eb;
       border-radius: 6px;
@@ -399,7 +418,8 @@ const AnswerItem = styled.div`
       border-collapse: collapse;
       margin: 8px 0;
     }
-    th, td {
+    th,
+    td {
       border: 1px solid #e5e7eb;
       padding: 6px 8px;
       text-align: left;
@@ -439,7 +459,7 @@ const AnswerItem = styled.div`
       transform: translateY(-1px);
     }
   }
-`;
+`
 
 // 第二回答加载提示样式（显示在第一个回答下方）
 const LoadingNotice = styled.div`
@@ -450,12 +470,12 @@ const LoadingNotice = styled.div`
   display: inline-flex;
   align-items: center;
   gap: 6px;
-`;
+`
 
 const spin = keyframes`
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
-`;
+`
 
 const LoadingIcon = styled.img`
   width: 20px;
@@ -464,7 +484,7 @@ const LoadingIcon = styled.img`
   opacity: 0.85;
   animation: ${spin} 1.2s linear infinite;
   transform-origin: center;
-`;
+`
 
 const SendIcon = styled(CopyOutlined)`
   color: #1890ff;
@@ -476,13 +496,13 @@ const SendIcon = styled(CopyOutlined)`
   &:hover {
     opacity: 1;
   }
-`;
+`
 
 const SectionTitle = styled.div`
   font-size: 14px;
   color: #666;
   margin-bottom: 8px;
-`;
+`
 
 const CorpusContainer = styled.div`
   background: #ffffff;
@@ -491,23 +511,23 @@ const CorpusContainer = styled.div`
   border-radius: 10px;
   border: 1px dashed #d8e1ee;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
-`;
+`
 
 const CorpusFields = styled.div`
   display: grid;
   gap: 8px;
-`;
+`
 
 const CorpusField = styled.div`
   display: flex;
   flex-direction: column;
   gap: 6px;
-`;
+`
 
 const CorpusLabel = styled.label`
   font-size: 12px;
   color: #6b7280;
-`;
+`
 
 const CorpusInput = styled.input`
   padding: 8px 12px;
@@ -524,7 +544,7 @@ const CorpusInput = styled.input`
     border-color: #1890ff;
     box-shadow: 0 2px 8px rgba(24, 144, 255, 0.1);
   }
-`;
+`
 
 const CorpusTextarea = styled.textarea`
   padding: 8px 12px;
@@ -545,7 +565,7 @@ const CorpusTextarea = styled.textarea`
     border-color: #1890ff;
     box-shadow: 0 2px 8px rgba(24, 144, 255, 0.1);
   }
-`;
+`
 
 const CorpusActions = styled.div`
   display: flex;
@@ -553,12 +573,12 @@ const CorpusActions = styled.div`
   justify-content: space-between;
   gap: 8px;
   margin-top: 8px;
-`;
+`
 
 const CorpusHint = styled.div`
   font-size: 12px;
   color: #7a8794;
-`;
+`
 
 const CorpusButton = styled.button`
   border: none;
@@ -579,13 +599,13 @@ const CorpusButton = styled.button`
     background: #c7d2e0;
     cursor: not-allowed;
   }
-`;
+`
 
 const CorpusStatus = styled.div<{ $error?: boolean }>`
   margin-top: 6px;
   font-size: 12px;
-  color: ${({ $error }) => ($error ? "#d14343" : "#1b7a4b")};
-`;
+  color: ${({ $error }) => ($error ? '#d14343' : '#1b7a4b')};
+`
 
 // 历史记录样式
 const HistoryContainer = styled.div`
@@ -594,19 +614,19 @@ const HistoryContainer = styled.div`
   border-radius: 8px;
   border: 1px solid #f0f0f0;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
-`;
+`
 
 const HistoryTitle = styled.div`
   font-size: 14px;
   color: #666;
   margin-bottom: 8px;
-`;
+`
 
 const HistoryList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 8px;
-`;
+`
 
 const HistoryItem = styled.div`
   display: flex;
@@ -624,454 +644,460 @@ const HistoryItem = styled.div`
     background: #f5f8fc;
     transform: translateY(-1px);
   }
-`;
+`
 
 const HistoryEmpty = styled.div`
   font-size: 13px;
   color: #8a9aa9;
-`;
+`
 
 // 构建两种提示语
-const buildShortPrompt = (q: string): string => `${q}（3句话以内）`;
-const buildLongPrompt = (q: string): string => `${q}（详细回答）`;
-const normalizePromptText = (value: string): string => value.replace(/\r\n/g, "\n");
+const buildShortPrompt = (q: string): string => `${q}（3句话以内）`
+const buildLongPrompt = (q: string): string => `${q}（详细回答）`
+const normalizePromptText = (value: string): string => value.replace(/\r\n/g, '\n')
 const mergePromptParts = (prefix: string, input: string): string => {
-  const left = normalizePromptText(prefix).replace(/\n+$/g, "");
-  const right = normalizePromptText(input).replace(/^\n+/g, "");
-  if (!left) return right;
-  if (!right) return left;
-  return `${left}\n${right}`;
-};
-const buildDoubaoPrompt = (q: string): string => mergePromptParts(doubaoCorpus, q);
-const buildDoubaoShortPrompt = (q: string): string => buildDoubaoPrompt(buildShortPrompt(q));
-const buildDoubaoLongPrompt = (q: string): string => buildDoubaoPrompt(buildLongPrompt(q));
+  const left = normalizePromptText(prefix).replace(/\n+$/g, '')
+  const right = normalizePromptText(input).replace(/^\n+/g, '')
+  if (!left) return right
+  if (!right) return left
+  return `${left}\n${right}`
+}
+const buildDoubaoPrompt = (q: string): string => mergePromptParts(doubaoCorpus, q)
+const buildDoubaoShortPrompt = (q: string): string => buildDoubaoPrompt(buildShortPrompt(q))
+const buildDoubaoLongPrompt = (q: string): string => buildDoubaoPrompt(buildLongPrompt(q))
 
 // 统一规范化错误为可打印字符串
 const getErrorMessage = (error: unknown): string => {
-  if (typeof error === "string") return error;
-  if (error && typeof error === "object") {
-    const anyErr = error as { response?: { data?: unknown }; message?: string };
-    const detail = anyErr.response?.data ?? anyErr.message ?? String(error);
-    return typeof detail === "string" ? detail : JSON.stringify(detail);
+  if (typeof error === 'string') return error
+  if (error && typeof error === 'object') {
+    const anyErr = error as { response?: { data?: unknown }; message?: string }
+    const detail = anyErr.response?.data ?? anyErr.message ?? String(error)
+    return typeof detail === 'string' ? detail : JSON.stringify(detail)
   }
-  return String(error);
-};
+  return String(error)
+}
 
 type MeetingFormState = {
-  link1: string;
-  id1: string;
-  topic1: string;
-  link2: string;
-  id2: string;
-  topic2: string;
-};
+  link1: string
+  id1: string
+  topic1: string
+  link2: string
+  id2: string
+  topic2: string
+}
 
 function App() {
-  const [activeTab, setActiveTab] = useState<"Chat" | "Meeting" | "History">("Chat");
-  const [question, setQuestion] = useState<string>("");
-  const [answers, setAnswers] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<'Chat' | 'Meeting' | 'History'>('Chat')
+  const [question, setQuestion] = useState<string>('')
+  const [answers, setAnswers] = useState<string[]>([])
   const [doubaoEntry, setDoubaoEntry] = useState<{ question: string; answer: string }>({
-    question: "",
-    answer: "",
-  });
-  const [doubaoSaving, setDoubaoSaving] = useState<boolean>(false);
-  const [doubaoStatus, setDoubaoStatus] = useState<string>("");
-  const [doubaoError, setDoubaoError] = useState<string>("");
-  const [history, setHistory] = useState<string[]>([]);
-  const [, setHasConfirmed] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isLoadingFirst, setIsLoadingFirst] = useState<boolean>(false);
-  const [isLoadingSecond, setIsLoadingSecond] = useState<boolean>(false);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const chatSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const meetingBuildTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    question: '',
+    answer: '',
+  })
+  const [doubaoSaving, setDoubaoSaving] = useState<boolean>(false)
+  const [doubaoStatus, setDoubaoStatus] = useState<string>('')
+  const [doubaoError, setDoubaoError] = useState<string>('')
+  const [history, setHistory] = useState<string[]>([])
+  const [, setHasConfirmed] = useState<boolean>(false)
+  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [isLoadingFirst, setIsLoadingFirst] = useState<boolean>(false)
+  const [isLoadingSecond, setIsLoadingSecond] = useState<boolean>(false)
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const chatSaveTimerRef = useRef<number | null>(null)
+  const meetingBuildTimerRef = useRef<number | null>(null)
   const [meetingForm, setMeetingForm] = useState<MeetingFormState>({
-    link1: "",
-    id1: "",
-    topic1: "",
-    link2: "",
-    id2: "",
-    topic2: "",
-  });
-  const [meetingPaste, setMeetingPaste] = useState<string>("");
-  const [meetingResponse, setMeetingResponse] = useState<string>("");
-  const [meetingLoading, setMeetingLoading] = useState<boolean>(false);
-  const [meetingError, setMeetingError] = useState<string>("");
+    link1: '',
+    id1: '',
+    topic1: '',
+    link2: '',
+    id2: '',
+    topic2: '',
+  })
+  const [meetingPaste, setMeetingPaste] = useState<string>('')
+  const [meetingResponse, setMeetingResponse] = useState<string>('')
+  const [meetingLoading, setMeetingLoading] = useState<boolean>(false)
+  const [meetingError, setMeetingError] = useState<string>('')
 
   const adjustTextareaHeight = (textarea: HTMLTextAreaElement | null): void => {
     if (textarea) {
-      textarea.style.height = "auto";
-      const newHeight = Math.min(Math.max(42, textarea.scrollHeight), 126);
-      textarea.style.height = `${newHeight}px`;
+      textarea.style.height = 'auto'
+      const newHeight = Math.min(Math.max(42, textarea.scrollHeight), 126)
+      textarea.style.height = `${newHeight}px`
     }
-  };
+  }
 
   useEffect(() => {
-    adjustTextareaHeight(textareaRef.current);
-  }, [question]);
+    adjustTextareaHeight(textareaRef.current)
+  }, [question])
 
   const handleConfirm = async (): Promise<void> => {
     if (question.trim() && !isLoading) {
       // 发送前把问题缓存到历史（去重，最多10条）
-      const q = question.trim();
-      queueChatSave(question);
-      setHistory((prev) => {
-        const next = [q, ...prev.filter((it) => it !== q)];
-        return next.slice(0, 10);
-      });
-      setQuestion("");
-      setIsLoading(true);
-      setIsLoadingFirst(true);
-      setIsLoadingSecond(false);
+      const q = question.trim()
+      queueChatSave(question)
+      setHistory(prev => {
+        const next = [q, ...prev.filter(it => it !== q)]
+        return next.slice(0, 10)
+      })
+      setQuestion('')
+      setIsLoading(true)
+      setIsLoadingFirst(true)
+      setIsLoadingSecond(false)
       // 新问题开始时清空旧内容
-      setAnswers([]);
+      setAnswers([])
 
       // 每条 completed 消息独立展示，不再使用占位拼接
 
       try {
-        const shortPrompt = buildDoubaoShortPrompt(q);
-        const shortStream = await streamDoubaoQuestion(shortPrompt);
-        let shortStarted = false;
-        let shortHasChunk = false;
+        const shortPrompt = buildDoubaoShortPrompt(q)
+        const shortStream = await streamDoubaoQuestion(shortPrompt)
+        let shortStarted = false
+        let shortHasChunk = false
 
         // 超时保护：若 25s 内无片段到达，提示失败
         const shortTimeoutId = setTimeout(() => {
           if (!shortHasChunk) {
-            setAnswers((prev) => [...prev, "Timeout: no response from bot"]);
-            setIsLoading(false);
+            setAnswers(prev => [...prev, 'Timeout: no response from bot'])
+            setIsLoading(false)
           }
-        }, 25000);
+        }, 25000)
 
         for await (const chunk of shortStream) {
-          if (!chunk) continue;
-          shortHasChunk = true;
+          if (!chunk) continue
+          shortHasChunk = true
           if (!shortStarted) {
-            shortStarted = true;
-            setIsLoadingFirst(false);
-            setAnswers((prev) => [...prev, chunk]);
-            continue;
+            shortStarted = true
+            setIsLoadingFirst(false)
+            setAnswers(prev => [...prev, chunk])
+            continue
           }
-          setAnswers((prev) => {
-            if (prev.length === 0) return [chunk];
-            const next = [...prev];
-            next[next.length - 1] = `${next[next.length - 1] ?? ""}${chunk}`;
-            return next;
-          });
+          setAnswers(prev => {
+            if (prev.length === 0) return [chunk]
+            const next = [...prev]
+            next[next.length - 1] = `${next[next.length - 1] ?? ''}${chunk}`
+            return next
+          })
         }
-        clearTimeout(shortTimeoutId);
-        setIsLoadingFirst(false);
+        clearTimeout(shortTimeoutId)
+        setIsLoadingFirst(false)
 
-        setIsLoadingSecond(true);
-        const longPrompt = buildDoubaoLongPrompt(q);
-        const longStream = await streamDoubaoQuestion(longPrompt);
-        let longStarted = false;
-        let longHasChunk = false;
+        setIsLoadingSecond(true)
+        const longPrompt = buildDoubaoLongPrompt(q)
+        const longStream = await streamDoubaoQuestion(longPrompt)
+        let longStarted = false
+        let longHasChunk = false
 
         const longTimeoutId = setTimeout(() => {
           if (!longHasChunk) {
-            setAnswers((prev) => [...prev, "Timeout: no response from bot"]);
-            setIsLoading(false);
+            setAnswers(prev => [...prev, 'Timeout: no response from bot'])
+            setIsLoading(false)
           }
-        }, 25000);
+        }, 25000)
 
         for await (const chunk of longStream) {
-          if (!chunk) continue;
-          longHasChunk = true;
+          if (!chunk) continue
+          longHasChunk = true
           if (!longStarted) {
-            longStarted = true;
-            setIsLoadingSecond(false);
-            setAnswers((prev) => [...prev, chunk]);
-            continue;
+            longStarted = true
+            setIsLoadingSecond(false)
+            setAnswers(prev => [...prev, chunk])
+            continue
           }
-          setAnswers((prev) => {
-            if (prev.length === 0) return [chunk];
-            const next = [...prev];
-            next[next.length - 1] = `${next[next.length - 1] ?? ""}${chunk}`;
-            return next;
-          });
+          setAnswers(prev => {
+            if (prev.length === 0) return [chunk]
+            const next = [...prev]
+            next[next.length - 1] = `${next[next.length - 1] ?? ''}${chunk}`
+            return next
+          })
         }
-        clearTimeout(longTimeoutId);
-        setIsLoadingSecond(false);
+        clearTimeout(longTimeoutId)
+        setIsLoadingSecond(false)
       } catch (error) {
-        const detail = getErrorMessage(error);
-        console.error("Error calling chat API:", detail);
-        setAnswers((prev) => [...prev, "Error: Failed to get response from bot"]);
+        const detail = getErrorMessage(error)
+        console.error('Error calling chat API:', detail)
+        setAnswers(prev => [...prev, 'Error: Failed to get response from bot'])
       } finally {
-        setHasConfirmed(true);
-        setIsLoading(false);
-        setIsLoadingFirst(false);
-        setIsLoadingSecond(false);
+        setHasConfirmed(true)
+        setIsLoading(false)
+        setIsLoadingFirst(false)
+        setIsLoadingSecond(false)
       }
     }
-  };
+  }
 
   const handleKeyPress = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleConfirm();
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleConfirm()
     }
-  };
+  }
 
   const handleInput = (e: ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    setQuestion(value);
-    queueChatSave(value);
-  };
+    const value = e.target.value
+    setQuestion(value)
+    queueChatSave(value)
+  }
 
   const saveChatInput = async (text: string): Promise<void> => {
-    if (!text.trim()) return;
+    if (!text.trim()) return
     try {
-      await fetch("/api/chat-save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      await fetch('/api/chat-save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
         keepalive: true,
-      });
+      })
     } catch (error) {
-      console.warn("Failed to save chat input:", error);
+      console.warn('Failed to save chat input:', error)
     }
-  };
+  }
 
   const queueChatSave = (text: string): void => {
-    if (!text.trim()) return;
+    if (!text.trim()) return
     if (chatSaveTimerRef.current) {
-      window.clearTimeout(chatSaveTimerRef.current);
+      window.clearTimeout(chatSaveTimerRef.current)
     }
     chatSaveTimerRef.current = window.setTimeout(() => {
-      chatSaveTimerRef.current = null;
-      void saveChatInput(text);
-    }, 400);
-  };
+      chatSaveTimerRef.current = null
+      void saveChatInput(text)
+    }, 400)
+  }
 
   const canSubmitDoubaoEntry =
-    doubaoEntry.question.trim().length > 0 && doubaoEntry.answer.trim().length > 0;
+    doubaoEntry.question.trim().length > 0 && doubaoEntry.answer.trim().length > 0
 
   const handleDoubaoEntryChange =
-    (field: "question" | "answer") =>
+    (field: 'question' | 'answer') =>
     (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void => {
-      const value = e.target.value;
-      setDoubaoEntry((prev) => ({ ...prev, [field]: value }));
-      setDoubaoStatus("");
-      setDoubaoError("");
-    };
+      const value = e.target.value
+      setDoubaoEntry(prev => ({ ...prev, [field]: value }))
+      setDoubaoStatus('')
+      setDoubaoError('')
+    }
 
   const handleDoubaoEntrySubmit = async (): Promise<void> => {
-    if (doubaoSaving) return;
-    const questionText = doubaoEntry.question.replace(/\r\n/g, "\n").trim();
-    const answerText = doubaoEntry.answer.replace(/\r\n/g, "\n").trim();
+    if (doubaoSaving) return
+    const questionText = doubaoEntry.question.replace(/\r\n/g, '\n').trim()
+    const answerText = doubaoEntry.answer.replace(/\r\n/g, '\n').trim()
     if (!questionText || !answerText) {
-      setDoubaoError("请填写问题与答案");
-      return;
+      setDoubaoError('请填写问题与答案')
+      return
     }
 
-    setDoubaoSaving(true);
-    setDoubaoError("");
-    setDoubaoStatus("");
+    setDoubaoSaving(true)
+    setDoubaoError('')
+    setDoubaoStatus('')
 
     try {
-      const res = await fetch("/api/doubao-corpus-add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/doubao-corpus-add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: questionText, answer: answerText }),
-      });
-      let payload: { index?: number; error?: string } | null = null;
+      })
+      let payload: { index?: number; error?: string } | null = null
       try {
-        payload = await res.json();
+        payload = await res.json()
       } catch {
-        payload = null;
+        payload = null
       }
       if (!res.ok) {
-        const detail = payload?.error ?? `HTTP ${res.status}`;
-        throw new Error(detail);
+        const detail = payload?.error ?? `HTTP ${res.status}`
+        throw new Error(detail)
       }
-      const savedIndex = typeof payload?.index === "number" ? payload.index : null;
-      setDoubaoStatus(savedIndex === null ? "已写入" : `已写入：${savedIndex}`);
-      setDoubaoEntry({ question: "", answer: "" });
+      const savedIndex = typeof payload?.index === 'number' ? payload.index : null
+      setDoubaoStatus(savedIndex === null ? '已写入' : `已写入：${savedIndex}`)
+      setDoubaoEntry({ question: '', answer: '' })
     } catch (error) {
-      setDoubaoError(getErrorMessage(error));
+      setDoubaoError(getErrorMessage(error))
     } finally {
-      setDoubaoSaving(false);
+      setDoubaoSaving(false)
     }
-  };
+  }
 
   const extractMeetingPair = (line: string): [string, string] | null => {
-    const urlMatch = line.match(/https?:\/\/\S+/);
-    const idMatch = line.match(/\d[\d-]{6,}/);
-    if (!urlMatch || !idMatch) return null;
-    return [urlMatch[0], idMatch[0]];
-  };
+    const urlMatch = line.match(/https?:\/\/\S+/)
+    const idMatch = line.match(/\d[\d-]{6,}/)
+    if (!urlMatch || !idMatch) return null
+    return [urlMatch[0], idMatch[0]]
+  }
 
   const parseMeetingPaste = (raw: string): MeetingFormState | null => {
     const lines = raw
-      .replace(/\r\n/g, "\n")
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean);
+      .replace(/\r\n/g, '\n')
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean)
     if (lines.length >= 6) {
-      const [link1, id1, topic1, link2, id2, topic2] = lines;
-      return { link1, id1, topic1, link2, id2, topic2 };
+      const [link1, id1, topic1, link2, id2, topic2] = lines
+      return { link1, id1, topic1, link2, id2, topic2 }
     }
     if (lines.length >= 4) {
-      const [link1, id1, link2, id2] = lines;
-      return { link1, id1, topic1: "", link2, id2, topic2: "" };
+      const [link1, id1, link2, id2] = lines
+      return { link1, id1, topic1: '', link2, id2, topic2: '' }
     }
     if (lines.length === 2) {
-      const first = extractMeetingPair(lines[0]);
-      const second = extractMeetingPair(lines[1]);
+      const first = extractMeetingPair(lines[0])
+      const second = extractMeetingPair(lines[1])
       if (first && second) {
-        const [link1, id1] = first;
-        const [link2, id2] = second;
-        return { link1, id1, topic1: "", link2, id2, topic2: "" };
+        const [link1, id1] = first
+        const [link2, id2] = second
+        return { link1, id1, topic1: '', link2, id2, topic2: '' }
       }
     }
-    return null;
-  };
+    return null
+  }
 
   const buildMeetingNoticeFromForm = (form: MeetingFormState, silent = false): void => {
-    const link1 = form.link1.trim();
-    const id1 = form.id1.trim();
-    const topic1 = form.topic1.trim();
-    const link2 = form.link2.trim();
-    const id2 = form.id2.trim();
-    const topic2 = form.topic2.trim();
+    const link1 = form.link1.trim()
+    const id1 = form.id1.trim()
+    const topic1 = form.topic1.trim()
+    const link2 = form.link2.trim()
+    const id2 = form.id2.trim()
+    const topic2 = form.topic2.trim()
     if (!link1 || !id1 || !link2 || !id2) {
       if (!silent) {
-        setMeetingError("请填写完整的会议链接与会议号");
+        setMeetingError('请填写完整的会议链接与会议号')
       } else {
-        setMeetingError("");
+        setMeetingError('')
       }
-      setMeetingResponse("");
-      return;
+      setMeetingResponse('')
+      return
     }
-    setMeetingResponse(buildMeetingNotice({ link1, id1, topic1, link2, id2, topic2 }));
-    setMeetingError("");
-    setMeetingLoading(false);
-  };
+    setMeetingResponse(buildMeetingNotice({ link1, id1, topic1, link2, id2, topic2 }))
+    setMeetingError('')
+    setMeetingLoading(false)
+  }
 
   const queueMeetingBuild = (form: MeetingFormState): void => {
     if (meetingBuildTimerRef.current) {
-      window.clearTimeout(meetingBuildTimerRef.current);
+      window.clearTimeout(meetingBuildTimerRef.current)
     }
     meetingBuildTimerRef.current = window.setTimeout(() => {
-      meetingBuildTimerRef.current = null;
-      buildMeetingNoticeFromForm(form, true);
-    }, 400);
-  };
+      meetingBuildTimerRef.current = null
+      buildMeetingNoticeFromForm(form, true)
+    }, 400)
+  }
 
-  const updateMeetingForm = (field: keyof MeetingFormState) => (e: ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setMeetingForm((prev) => {
-      const next = { ...prev, [field]: value };
-      queueMeetingBuild(next);
-      return next;
-    });
-    setMeetingError("");
-  };
+  const updateMeetingForm =
+    (field: keyof MeetingFormState) => (e: ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value
+      setMeetingForm(prev => {
+        const next = { ...prev, [field]: value }
+        queueMeetingBuild(next)
+        return next
+      })
+      setMeetingError('')
+    }
 
   const handleMeetingPaste = (e: ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    setMeetingPaste(value);
-    const parsed = parseMeetingPaste(value);
+    const value = e.target.value
+    setMeetingPaste(value)
+    const parsed = parseMeetingPaste(value)
     if (parsed) {
-      setMeetingForm(parsed);
-      queueMeetingBuild(parsed);
-      setMeetingError("");
+      setMeetingForm(parsed)
+      queueMeetingBuild(parsed)
+      setMeetingError('')
     }
-  };
+  }
 
   const handleMeetingFieldKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      buildMeetingNoticeFromForm(meetingForm, false);
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      buildMeetingNoticeFromForm(meetingForm, false)
     }
-  };
+  }
 
   // 清空回答（刷新）
   const handleRefresh = (): void => {
-    setAnswers([]);
-  };
+    setAnswers([])
+  }
 
   const focusHeroInput = (e?: SyntheticEvent): void => {
     try {
-      if (e && typeof (e as any).preventDefault === "function") {
-        (e as any).preventDefault();
+      if (e && typeof (e as any).preventDefault === 'function') {
+        ;(e as any).preventDefault()
       }
     } catch {}
-    const el = textareaRef.current;
+    const el = textareaRef.current
     if (el) {
-      el.focus();
+      el.focus()
       try {
-        const len = (el.value || "").length;
-        el.setSelectionRange(len, len);
+        const len = (el.value || '').length
+        el.setSelectionRange(len, len)
       } catch {}
       try {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
       } catch {}
     }
-  };
+  }
 
   const copyTextToClipboard = async (text: string): Promise<void> => {
-    if (!text || !text.trim()) return;
+    if (!text || !text.trim()) return
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(text);
-        return;
+        await navigator.clipboard.writeText(text)
+        return
       }
     } catch {
       // fallback below
     }
     try {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.top = "-1000px";
-      ta.style.left = "-1000px";
-      document.body.appendChild(ta);
-      ta.focus();
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.style.position = 'fixed'
+      ta.style.top = '-1000px'
+      ta.style.left = '-1000px'
+      document.body.appendChild(ta)
+      ta.focus()
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
     } catch {
       // ignore
     }
-  };
+  }
 
   const handleCopyIconClick = async (e: SyntheticEvent<HTMLDivElement>): Promise<void> => {
     try {
-      const parent = e.currentTarget?.parentElement;
-      const textEl = parent?.querySelector?.(".answer-text") as HTMLElement | null;
-      const text = ((textEl?.innerText ?? textEl?.textContent) ?? "").trim();
-      await copyTextToClipboard(text);
+      const parent = e.currentTarget?.parentElement
+      const textEl = parent?.querySelector?.('.answer-text') as HTMLElement | null
+      const text = (textEl?.innerText ?? textEl?.textContent ?? '').trim()
+      await copyTextToClipboard(text)
     } catch {
       // ignore copy error
     }
-  };
-
+  }
 
   return (
     <Container>
       <TopBar>
-        <Tab $active={activeTab === "Chat"} onClick={() => setActiveTab("Chat")}>Chat</Tab>
-        <Tab $active={activeTab === "Meeting"} onClick={() => setActiveTab("Meeting")}>Meeting</Tab>
-        <Tab $active={activeTab === "History"} onClick={() => setActiveTab("History")}>History</Tab>
+        <Tab $active={activeTab === 'Chat'} onClick={() => setActiveTab('Chat')}>
+          Chat
+        </Tab>
+        <Tab $active={activeTab === 'Meeting'} onClick={() => setActiveTab('Meeting')}>
+          Meeting
+        </Tab>
+        <Tab $active={activeTab === 'History'} onClick={() => setActiveTab('History')}>
+          History
+        </Tab>
         <FlexSpacer />
         <RefreshButton
           aria-label="刷新回答"
           title="刷新回答"
           onClick={() => {
-            handleRefresh();
+            handleRefresh()
           }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              handleRefresh();
+          onKeyDown={e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              handleRefresh()
             }
           }}
         >
           <RefreshIcon />
         </RefreshButton>
       </TopBar>
-      {activeTab === "History" ? (
+      {activeTab === 'History' ? (
         <HistoryContainer>
           <HistoryTitle>History</HistoryTitle>
           {history.length === 0 ? (
@@ -1083,17 +1109,17 @@ function App() {
                   key={idx}
                   role="button"
                   tabIndex={0}
-                  onClick={(e) => {
-                    setQuestion(h);
-                    setActiveTab("Chat");
-                    focusHeroInput(e as any);
+                  onClick={e => {
+                    setQuestion(h)
+                    setActiveTab('Chat')
+                    focusHeroInput(e as any)
                   }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setQuestion(h);
-                      setActiveTab("Chat");
-                      focusHeroInput(e as any);
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setQuestion(h)
+                      setActiveTab('Chat')
+                      focusHeroInput(e as any)
                     }
                   }}
                 >
@@ -1103,7 +1129,7 @@ function App() {
             </HistoryList>
           )}
         </HistoryContainer>
-      ) : activeTab === "Meeting" ? (
+      ) : activeTab === 'Meeting' ? (
         <>
           <MeetingForm id="meeting-form">
             <MeetingField>
@@ -1111,9 +1137,11 @@ function App() {
               <MeetingPaste
                 value={meetingPaste}
                 onChange={handleMeetingPaste}
-                placeholder={"链接1\n会议号1\n会议主题A\n链接2\n会议号2\n会议主题B"}
+                placeholder={'链接1\n会议号1\n会议主题A\n链接2\n会议号2\n会议主题B'}
               />
-              <MeetingHint>粘贴 6 行会自动填充，也支持 4 行或 2 行（每行含链接与会议号）。</MeetingHint>
+              <MeetingHint>
+                粘贴 6 行会自动填充，也支持 4 行或 2 行（每行含链接与会议号）。
+              </MeetingHint>
             </MeetingField>
             <MeetingGroup>
               <MeetingGroupTitle>会场A（Level2&Level3）</MeetingGroupTitle>
@@ -1122,7 +1150,7 @@ function App() {
                   <span>会议链接1</span>
                   <MeetingInput
                     value={meetingForm.link1}
-                    onChange={updateMeetingForm("link1")}
+                    onChange={updateMeetingForm('link1')}
                     onKeyDown={handleMeetingFieldKeyDown}
                     placeholder="https://meeting.tencent.com/..."
                   />
@@ -1131,7 +1159,7 @@ function App() {
                   <span>会议号1</span>
                   <MeetingInput
                     value={meetingForm.id1}
-                    onChange={updateMeetingForm("id1")}
+                    onChange={updateMeetingForm('id1')}
                     onKeyDown={handleMeetingFieldKeyDown}
                     placeholder="例如：422-7274-0163"
                   />
@@ -1141,7 +1169,7 @@ function App() {
                 <span>会议主题A</span>
                 <MeetingInput
                   value={meetingForm.topic1}
-                  onChange={updateMeetingForm("topic1")}
+                  onChange={updateMeetingForm('topic1')}
                   onKeyDown={handleMeetingFieldKeyDown}
                   placeholder="例如：结营&答疑"
                 />
@@ -1154,7 +1182,7 @@ function App() {
                   <span>会议链接2</span>
                   <MeetingInput
                     value={meetingForm.link2}
-                    onChange={updateMeetingForm("link2")}
+                    onChange={updateMeetingForm('link2')}
                     onKeyDown={handleMeetingFieldKeyDown}
                     placeholder="https://meeting.tencent.com/..."
                   />
@@ -1163,7 +1191,7 @@ function App() {
                   <span>会议号2</span>
                   <MeetingInput
                     value={meetingForm.id2}
-                    onChange={updateMeetingForm("id2")}
+                    onChange={updateMeetingForm('id2')}
                     onKeyDown={handleMeetingFieldKeyDown}
                     placeholder="例如：366-2659-2605"
                   />
@@ -1173,7 +1201,7 @@ function App() {
                 <span>会议主题B</span>
                 <MeetingInput
                   value={meetingForm.topic2}
-                  onChange={updateMeetingForm("topic2")}
+                  onChange={updateMeetingForm('topic2')}
                   onKeyDown={handleMeetingFieldKeyDown}
                   placeholder="例如：训练营结营&项目成果展示"
                 />
@@ -1199,7 +1227,9 @@ function App() {
             {meetingResponse && (
               <AnswerItem>
                 <div className="answer-text">
-                  <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{meetingResponse}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                    {meetingResponse}
+                  </ReactMarkdown>
                 </div>
                 <div
                   className="icon-wrapper"
@@ -1207,10 +1237,10 @@ function App() {
                   title="复制该回答"
                   tabIndex={0}
                   onClick={handleCopyIconClick}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      handleCopyIconClick(e);
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      handleCopyIconClick(e)
                     }
                   }}
                 >
@@ -1244,10 +1274,10 @@ function App() {
                     title="复制该回答"
                     tabIndex={0}
                     onClick={handleCopyIconClick}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        handleCopyIconClick(e);
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        handleCopyIconClick(e)
                       }
                     }}
                   >
@@ -1269,7 +1299,6 @@ function App() {
                 )}
               </Fragment>
             ))}
-
           </AnswersContainer>
 
           <CorpusContainer>
@@ -1279,7 +1308,7 @@ function App() {
                 <CorpusLabel>问题行</CorpusLabel>
                 <CorpusInput
                   value={doubaoEntry.question}
-                  onChange={handleDoubaoEntryChange("question")}
+                  onChange={handleDoubaoEntryChange('question')}
                   placeholder="例如：训练营可以退款吗？"
                 />
               </CorpusField>
@@ -1287,7 +1316,7 @@ function App() {
                 <CorpusLabel>答：行</CorpusLabel>
                 <CorpusTextarea
                   value={doubaoEntry.answer}
-                  onChange={handleDoubaoEntryChange("answer")}
+                  onChange={handleDoubaoEntryChange('answer')}
                   placeholder="例如：本训练营为线上直播形式，服务开启后不支持退费。"
                 />
               </CorpusField>
@@ -1299,13 +1328,11 @@ function App() {
                 onClick={handleDoubaoEntrySubmit}
                 disabled={doubaoSaving || !canSubmitDoubaoEntry}
               >
-                {doubaoSaving ? "写入中..." : "写入语料"}
+                {doubaoSaving ? '写入中...' : '写入语料'}
               </CorpusButton>
             </CorpusActions>
             {(doubaoError || doubaoStatus) && (
-              <CorpusStatus $error={!!doubaoError}>
-                {doubaoError || doubaoStatus}
-              </CorpusStatus>
+              <CorpusStatus $error={!!doubaoError}>{doubaoError || doubaoStatus}</CorpusStatus>
             )}
           </CorpusContainer>
 
@@ -1325,14 +1352,14 @@ function App() {
               title="Send"
               role="button"
               tabIndex={0}
-              onClick={(e) => {
-                e.preventDefault();
-                handleConfirm();
+              onClick={e => {
+                e.preventDefault()
+                handleConfirm()
               }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  handleConfirm();
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  handleConfirm()
                 }
               }}
             >
@@ -1342,7 +1369,7 @@ function App() {
         </>
       )}
     </Container>
-  );
+  )
 }
 
-export default App;
+export default App
